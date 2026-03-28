@@ -1,10 +1,31 @@
-using Lektio.Api.Infrastructure;
 using Lektio.Api.Endpoints;
+using Lektio.Api.Infrastructure;
+using Lektio.Api.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // MongoDB
 builder.Services.AddSingleton<MongoDbContext>();
+
+// Repositories (singleton – stateless, hold collection references)
+builder.Services.AddSingleton<IProfileRepository, ProfileRepository>();
+builder.Services.AddSingleton<IConversationRepository, ConversationRepository>();
+
+// Claude HTTP client
+builder.Services.AddHttpClient("claude", client =>
+{
+    client.BaseAddress = new Uri("https://api.anthropic.com");
+    client.Timeout = TimeSpan.FromSeconds(120);
+});
+
+// Claude service (scoped – uses IHttpClientFactory)
+builder.Services.AddScoped<IClaudeService, ClaudeService>();
+
+// JSON options – camelCase for frontend compatibility
+builder.Services.ConfigureHttpJsonOptions(options =>
+{
+    options.SerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
+});
 
 // CORS
 var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
@@ -26,5 +47,7 @@ app.UseCors();
 
 // Endpoints
 app.MapHealthEndpoints();
+app.MapProfileEndpoints();
+app.MapChatEndpoints();
 
 app.Run();

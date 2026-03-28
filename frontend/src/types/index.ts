@@ -25,6 +25,7 @@ export interface ChatMessage {
   content: string;
   imageUrl?: string;
   visualPrimitives?: VisualPrimitive[];
+  narration?: string;
   timestamp: string;
 }
 
@@ -40,4 +41,24 @@ export interface VisualStep {
   audioDurationMs?: number;
   transition: "draw" | "fade" | "morph" | "slide";
   durationMs: number;
+}
+
+export interface ChatRequest {
+  message: string;
+  conversationId: string | null;
+  profileId: string;
+  imageContext?: string;
+}
+
+export interface ChatResponse {
+  text: string;
+  narration?: string;
+  visualPrimitives?: VisualPrimitive[] | null;
+  conversationId: string;
+}
+
+export interface OnboardingData {
+  name: string;
+  schoolLevel: SchoolLevel;
+  preferences: StudentPreferences;
 }
