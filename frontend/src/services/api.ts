@@ -1,5 +1,19 @@
 const BASE_URL = "/api";
 
+export class ApiError extends Error {
+  status: number;
+  statusText: string;
+  body?: string;
+
+  constructor(status: number, statusText: string, body?: string) {
+    super(`API error: ${status} ${statusText}`);
+    this.name = "ApiError";
+    this.status = status;
+    this.statusText = statusText;
+    this.body = body;
+  }
+}
+
 async function request<T>(
   path: string,
   options?: RequestInit,
@@ -13,10 +27,12 @@ async function request<T>(
   });
 
   if (!response.ok) {
-    throw new Error(`API error: ${response.status} ${response.statusText}`);
+    const body = await response.text().catch(() => undefined);
+    throw new ApiError(response.status, response.statusText, body);
   }
 
-  return response.json();
+  const text = await response.text();
+  return text ? JSON.parse(text) : (undefined as T);
 }
 
 export const api = {
