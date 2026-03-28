@@ -1,0 +1,40 @@
+# Node
+node_modules/
+dist/
+.vite/
+
+# .NET
+bin/
+obj/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+.vs/
+publish/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Environment
+.env
+.env.*
+!.env.example
+appsettings.Development.json
+
+# OS
+.DS_Store
+Thumbs.db
+
+# PWA
+dev-dist/
+
+# Docker
+docker-compose.override.yml
+
+# Claude
+.claude/
