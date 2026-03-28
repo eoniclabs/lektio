@@ -11,27 +11,31 @@ public class ConversationRepository : IConversationRepository
     public ConversationRepository(MongoDbContext db)
     {
         _collection = db.GetCollection<Conversation>("conversations");
+
+        // Ensure index on ProfileId for fast per-profile lookups
+        var indexModel = new CreateIndexModel<Conversation>(
+            Builders<Conversation>.IndexKeys.Ascending(c => c.ProfileId));
+        _collection.Indexes.CreateOne(indexModel);
     }
 
     public async Task<Conversation> GetOrCreateForProfileAsync(string profileId)
     {
-        var existing = await _collection
-            .Find(c => c.ProfileId == profileId)
-            .SortByDescending(c => c.UpdatedAt)
-            .FirstOrDefaultAsync();
-
-        if (existing is not null)
-            return existing;
-
-        var conversation = new Conversation
+        // Atomic upsert – avoids TOCTOU race between Find and Insert
+        var now = DateTime.UtcNow;
+        var filter = Builders<Conversation>.Filter.Eq(c => c.ProfileId, profileId);
+        var update = Builders<Conversation>.Update
+            .SetOnInsert(c => c.ProfileId, profileId)
+            .SetOnInsert(c => c.Messages, new List<ConversationMessage>())
+            .SetOnInsert(c => c.CreatedAt, now)
+            .Set(c => c.UpdatedAt, now);
+        var options = new FindOneAndUpdateOptions<Conversation>
         {
-            ProfileId = profileId,
-            Messages = [],
-            CreatedAt = DateTime.UtcNow,
-            UpdatedAt = DateTime.UtcNow
+            IsUpsert = true,
+            ReturnDocument = ReturnDocument.After,
+            Sort = Builders<Conversation>.Sort.Descending(c => c.UpdatedAt)
         };
-        await _collection.InsertOneAsync(conversation);
-        return conversation;
+
+        return await _collection.FindOneAndUpdateAsync(filter, update, options);
     }
 
     public async Task<Conversation?> GetByIdAsync(string id)

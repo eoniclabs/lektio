@@ -7,6 +7,10 @@ namespace Lektio.Api.Endpoints;
 
 public static class ChatEndpoints
 {
+    // Non-static marker used as the category type for ILogger<T>
+    // (static classes cannot be used as generic type arguments in C#)
+    private sealed class ChatHandler;
+
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase
@@ -23,7 +27,7 @@ public static class ChatEndpoints
         IConversationRepository conversations,
         IProfileRepository profiles,
         HttpContext ctx,
-        ILogger<Program> logger,
+        ILogger<ChatHandler> logger,
         CancellationToken ct)
     {
         var profile = await profiles.GetByIdAsync(req.ProfileId);
@@ -42,12 +46,14 @@ public static class ChatEndpoints
 
         await ctx.Response.StartAsync(ct);
 
-        // Load or create conversation
+        // Load or create conversation – verify ownership to prevent cross-user injection
         Conversation conversation;
         if (!string.IsNullOrEmpty(req.ConversationId))
         {
-            conversation = await conversations.GetByIdAsync(req.ConversationId)
-                ?? await conversations.GetOrCreateForProfileAsync(req.ProfileId);
+            var requested = await conversations.GetByIdAsync(req.ConversationId);
+            conversation = (requested is not null && requested.ProfileId == req.ProfileId)
+                ? requested
+                : await conversations.GetOrCreateForProfileAsync(req.ProfileId);
         }
         else
         {

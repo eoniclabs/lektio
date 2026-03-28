@@ -37,9 +37,9 @@ public class ClaudeService : IClaudeService
             ?? throw new InvalidOperationException("Claude:ApiKey is not configured.");
         var model = _configuration["Claude:Model"] ?? "claude-opus-4-5";
 
-        // Build messages from history (last 20) + current user message
+        // Build messages from history + current user message.
+        // Callers are responsible for trimming history to the desired window size.
         var messages = history
-            .TakeLast(20)
             .Select(m => new { role = m.Role, content = m.Content })
             .Append(new { role = "user", content = userMessage })
             .ToList<object>();

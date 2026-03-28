@@ -38,7 +38,7 @@ export function MessageBubble({ message, onSave }: MessageBubbleProps) {
           </div>
 
           {message.visualPrimitives?.map((p, i) => (
-            <VisualPrimitiveCard key={i} primitive={p} />
+            <VisualPrimitiveCard key={`${p.type}-${i}`} primitive={p} />
           ))}
         </div>
       </div>

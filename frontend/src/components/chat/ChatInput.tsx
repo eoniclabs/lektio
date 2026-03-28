@@ -39,21 +39,6 @@ export function ChatInput({
     }
   };
 
-  const handleExternalInput = (text: string) => {
-    setValue(text);
-    textareaRef.current?.focus();
-  };
-
-  // Expose method for parent to pre-fill (e.g., from EmptyState prompts)
-  // We use a data attribute trick to expose the setter
-  useEffect(() => {
-    const el = textareaRef.current;
-    if (el) {
-      (el as HTMLTextAreaElement & { lektioFill?: (t: string) => void }).lektioFill =
-        handleExternalInput;
-    }
-  });
-
   return (
     <div className="border-t border-gray-100 bg-white px-3 py-3">
       <div className="flex items-end gap-2 bg-gray-50 rounded-2xl px-3 py-2">

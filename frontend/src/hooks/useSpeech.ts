@@ -1,12 +1,16 @@
 import { useState, useEffect, useRef } from "react";
 import { WebSpeechService } from "../services/speech";
 
-const speechService = new WebSpeechService();
-
 export function useSpeech(onResult: (text: string) => void) {
   const [isListening, setIsListening] = useState(false);
   const onResultRef = useRef(onResult);
   onResultRef.current = onResult;
+
+  // Hold the service instance in a ref so it survives re-renders but is
+  // not shared across HMR module boundaries in dev.
+  const serviceRef = useRef<WebSpeechService | null>(null);
+  if (!serviceRef.current) serviceRef.current = new WebSpeechService();
+  const speechService = serviceRef.current;
 
   const isSupported = speechService.isSupported();
 
@@ -27,7 +31,7 @@ export function useSpeech(onResult: (text: string) => void) {
   // Clean up on unmount
   useEffect(() => {
     return () => speechService.stopListening();
-  }, []);
+  }, [speechService]);
 
   return { isListening, isSupported, startListening, stopListening };
 }

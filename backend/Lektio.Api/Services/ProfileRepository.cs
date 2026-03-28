@@ -28,8 +28,14 @@ public class ProfileRepository : IProfileRepository
 
     public async Task<StudentProfile?> UpdateAsync(string id, StudentProfile updated)
     {
+        // Preserve CreatedAt from the existing document to avoid overwriting it
+        var existing = await _collection.Find(p => p.Id == id).FirstOrDefaultAsync();
+        if (existing is null) return null;
+
+        updated.Id = id;
+        updated.CreatedAt = existing.CreatedAt;
         updated.UpdatedAt = DateTime.UtcNow;
-        var result = await _collection.ReplaceOneAsync(p => p.Id == id, updated);
-        return result.ModifiedCount > 0 ? updated : null;
+        await _collection.ReplaceOneAsync(p => p.Id == id, updated);
+        return updated;
     }
 }

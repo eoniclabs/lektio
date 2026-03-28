@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { v4 as uuidv4 } from "uuid";
 import { useChatStore } from "../stores/chat";
 import { sendChatMessage } from "../services/chatStream";
@@ -15,9 +15,20 @@ export function useChat(profileId: string) {
     setConversationId,
   } = useChatStore();
 
+  const abortRef = useRef<AbortController | null>(null);
+
+  // Abort any in-flight stream when the component unmounts
+  useEffect(() => {
+    return () => abortRef.current?.abort();
+  }, []);
+
   const sendMessage = useCallback(
     async (text: string) => {
       if (!text.trim() || isLoading) return;
+
+      // Abort any previous request and create a fresh controller
+      abortRef.current?.abort();
+      abortRef.current = new AbortController();
 
       // Add user message
       addMessage({
@@ -52,6 +63,7 @@ export function useChat(profileId: string) {
               );
             },
           },
+          abortRef.current.signal,
         );
       } finally {
         setLoading(false);
