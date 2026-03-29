@@ -92,7 +92,7 @@ export function EquationPrimitive() {
 
   return (
     <div className="flex flex-col items-center gap-3 py-4 px-2 min-h-[80px]">
-      {step?.action === "annotate" && data?.annotation && (
+      {step?.action === "transform" && data?.annotation && (
         <p className="text-xs text-[#2B9DB0] font-medium bg-[#2B9DB0]/10 px-3 py-1 rounded-full">
           {data.annotation}
         </p>

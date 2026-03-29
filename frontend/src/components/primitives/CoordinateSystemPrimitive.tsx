@@ -1,15 +1,15 @@
 import { useEffect, useRef } from "react";
 import gsap from "gsap";
+import { evaluate } from "mathjs";
 import { useAnimation } from "../../contexts/AnimationContext";
 
-// Safe expression evaluator for common math functions
+// Safe expression evaluator using mathjs (no code execution)
+// Normalises JS-style Math.* calls to mathjs equivalents (e.g. Math.sin → sin)
 function evalExpression(expr: string, x: number): number {
   try {
-    const fn = new Function(
-      "x", "sin", "cos", "tan", "sqrt", "abs", "log", "exp", "PI",
-      `"use strict"; return (${expr});`
-    );
-    return fn(x, Math.sin, Math.cos, Math.tan, Math.sqrt, Math.abs, Math.log, Math.exp, Math.PI);
+    const normalized = expr.replace(/Math\./g, "");
+    const result = evaluate(normalized, { x });
+    return typeof result === "number" ? result : NaN;
   } catch {
     return NaN;
   }

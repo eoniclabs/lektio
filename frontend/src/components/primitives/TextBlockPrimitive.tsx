@@ -1,7 +1,40 @@
 import { useEffect, useRef } from "react";
 import gsap from "gsap";
 import ReactMarkdown from "react-markdown";
+import rehypeRaw from "rehype-raw";
 import { useAnimation } from "../../contexts/AnimationContext";
+
+const MARK_CLASS = "bg-[#2B9DB0]/20 text-[#1d7a8a] rounded px-0.5 not-italic";
+
+/**
+ * Injects a <mark> tag around the highlight phrase in the raw markdown string.
+ * Strategy:
+ *  1. Direct substring match (handles simple words and phrases not split by markdown).
+ *  2. Regex match that tolerates markdown syntax characters (*_~) between words,
+ *     covering phrases like "bold text" that render from "**bold** text".
+ */
+function injectHighlight(markdown: string, phrase: string): string {
+  // 1. Direct match
+  const idx = markdown.indexOf(phrase);
+  if (idx !== -1) {
+    return (
+      markdown.slice(0, idx) +
+      `<mark class="${MARK_CLASS}">${phrase}</mark>` +
+      markdown.slice(idx + phrase.length)
+    );
+  }
+
+  // 2. Cross-boundary match: allow markdown syntax between words
+  const escaped = phrase
+    .trim()
+    .split(/\s+/)
+    .map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
+    .join("[\\s*_~]+");
+  return markdown.replace(
+    new RegExp(escaped, "i"),
+    (match) => `<mark class="${MARK_CLASS}">${match}</mark>`
+  );
+}
 
 export function TextBlockPrimitive() {
   const { state, primitive } = useAnimation();
@@ -10,7 +43,10 @@ export function TextBlockPrimitive() {
 
   const step = primitive.steps[currentStep];
   const data = step?.data as { text?: string; highlight?: string | null } | undefined;
-  const text = data?.text ?? step?.narration ?? "";
+  const rawText = data?.text ?? step?.narration ?? "";
+  const highlight = data?.highlight ?? null;
+
+  const text = highlight ? injectHighlight(rawText, highlight) : rawText;
 
   useEffect(() => {
     if (!blockRef.current) return;
@@ -27,36 +63,24 @@ export function TextBlockPrimitive() {
     }
   }, [currentStep, step?.transition]);
 
-  // Highlight specific phrase if requested
+  // Animate the injected <mark> element after render
   useEffect(() => {
-    if (!blockRef.current || !data?.highlight) return;
-    const highlight = data.highlight;
-    const walker = document.createTreeWalker(blockRef.current, NodeFilter.SHOW_TEXT);
-    const nodes: Text[] = [];
-    while (walker.nextNode()) nodes.push(walker.currentNode as Text);
-
-    for (const node of nodes) {
-      const idx = node.nodeValue?.indexOf(highlight) ?? -1;
-      if (idx === -1) continue;
-      const before = document.createTextNode(node.nodeValue!.slice(0, idx));
-      const mark = document.createElement("mark");
-      mark.textContent = highlight;
-      mark.className = "bg-[#2B9DB0]/20 text-[#1d7a8a] rounded px-0.5 not-italic";
-      const after = document.createTextNode(node.nodeValue!.slice(idx + highlight.length));
-      node.parentNode?.replaceChild(after, node);
-      after.parentNode?.insertBefore(mark, after);
-      after.parentNode?.insertBefore(before, mark);
-      gsap.fromTo(mark, { backgroundColor: "rgba(43,157,176,0.5)" }, { backgroundColor: "rgba(43,157,176,0.15)", duration: 1.2, delay: 0.3 });
-      break;
-    }
-  }, [currentStep, data?.highlight]);
+    if (!blockRef.current || !highlight) return;
+    const mark = blockRef.current.querySelector("mark");
+    if (!mark) return;
+    gsap.fromTo(
+      mark,
+      { backgroundColor: "rgba(43,157,176,0.5)" },
+      { backgroundColor: "rgba(43,157,176,0.15)", duration: 1.2, delay: 0.3 }
+    );
+  }, [currentStep, highlight]);
 
   return (
     <div
       ref={blockRef}
       className="py-3 px-1 text-sm text-gray-800 prose prose-sm max-w-none leading-relaxed"
     >
-      <ReactMarkdown>{text}</ReactMarkdown>
+      <ReactMarkdown rehypePlugins={[rehypeRaw]}>{text}</ReactMarkdown>
     </div>
   );
 }
