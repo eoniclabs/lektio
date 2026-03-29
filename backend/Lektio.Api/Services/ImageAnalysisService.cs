@@ -20,9 +20,11 @@ public class ImageAnalysisService : IImageAnalysisService
         ["image/jpeg", "image/png", "image/gif", "image/webp"];
 
     private const string SystemPrompt =
-        "Du är en OCR-assistent. Extrahera allt text från bilden exakt som det är skrivet. " +
-        "Bevara formler, rubriker och listor. Svara med JSON: { \"extractedText\": \"...\", \"summary\": \"...\" } " +
-        "där summary är en mening som beskriver sidan.";
+        """
+        Du är en OCR-assistent. Extrahera allt text från bilden exakt som det är skrivet.
+        Bevara formler, rubriker och listor. Svara med JSON: { "extractedText": "...", "summary": "..." }
+        där summary är en mening som beskriver sidan.
+        """;
 
     public ImageAnalysisService(
         IHttpClientFactory httpClientFactory,
@@ -49,7 +51,7 @@ public class ImageAnalysisService : IImageAnalysisService
         var requestBody = new
         {
             model,
-            max_tokens = 2048,
+            max_tokens = 4096,
             system = SystemPrompt,
             messages = new[]
             {
@@ -120,7 +122,7 @@ public class ImageAnalysisService : IImageAnalysisService
             var root = parsed.RootElement;
             return new ImageAnalysisResponse
             {
-                ExtractedText = root.TryGetProperty("extractedText", out var et) ? et.GetString() ?? string.Empty : rawText,
+                ExtractedText = root.TryGetProperty("extractedText", out var et) ? et.GetString() ?? string.Empty : string.Empty,
                 Summary = root.TryGetProperty("summary", out var s) ? s.GetString() ?? string.Empty : string.Empty,
                 MediaType = mediaType
             };

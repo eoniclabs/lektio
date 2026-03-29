@@ -6,9 +6,8 @@ import type { ImageAnalysisResult } from "../services/imageAnalysis";
 
 type CameraState = "idle" | "active" | "preview";
 
-const cameraService = new WebCameraService();
-
 export function useCamera() {
+  const cameraService = useRef(new WebCameraService()).current;
   const [state, setState] = useState<CameraState>("idle");
   const [capturedDataUrl, setCapturedDataUrl] = useState<string | null>(null);
   const [analysisResult, setAnalysisResult] = useState<ImageAnalysisResult | null>(null);
