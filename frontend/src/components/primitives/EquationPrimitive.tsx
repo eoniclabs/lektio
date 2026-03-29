@@ -5,9 +5,8 @@ import gsap from "gsap";
 import { useAnimation } from "../../contexts/AnimationContext";
 
 export function EquationPrimitive() {
-  const { state } = useAnimation();
-  const { currentStep, playbackState } = state;
-  const primitive = useAnimation().primitive;
+  const { state, primitive } = useAnimation();
+  const { currentStep } = state;
   const containerRef = useRef<HTMLDivElement>(null);
   const prevStepRef = useRef(-1);
 
@@ -89,7 +88,7 @@ export function EquationPrimitive() {
         });
       }, 200);
     }
-  }, [currentStep, data, step, playbackState]);
+  }, [currentStep, data, step]);
 
   return (
     <div className="flex flex-col items-center gap-3 py-4 px-2 min-h-[80px]">

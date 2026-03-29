@@ -4,11 +4,11 @@ import type { PlaybackSpeed } from "../../hooks/useAnimationDirector";
 const SPEEDS: PlaybackSpeed[] = [0.5, 1, 1.5, 2];
 
 export function PlaybackControls() {
-  const { state, controls } = useAnimation();
+  const { state, controls, primitive } = useAnimation();
   const { currentStep, totalSteps, playbackState, speed } = state;
   const { play, pause, nextStep, prevStep, seekTo, setSpeed } = controls;
   const isPlaying = playbackState === "playing";
-  const currentStepData = useAnimation().primitive.steps[currentStep];
+  const currentStepData = primitive.steps[currentStep];
 
   return (
     <div className="flex flex-col gap-3 bg-white rounded-2xl p-4 shadow-sm border border-gray-100">

@@ -1,4 +1,4 @@
-import { useState, useLayoutEffect, useRef } from "react";
+import { useState, useEffect, useLayoutEffect, useRef } from "react";
 import gsap from "gsap";
 import type { VisualPrimitive } from "../../types";
 import { PrimitiveRenderer } from "../primitives/PrimitiveRenderer";
@@ -37,15 +37,18 @@ const primitiveLabels: Record<string, string> = {
 function ExpandedModal({ primitive, onClose }: { primitive: VisualPrimitive; onClose: () => void }) {
   const backdropRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
+  const closeTweenRef = useRef<gsap.core.Tween | null>(null);
 
   useLayoutEffect(() => {
     gsap.fromTo(backdropRef.current, { opacity: 0 }, { opacity: 1, duration: 0.2 });
     gsap.fromTo(panelRef.current, { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.25, ease: "power2.out" });
   }, []);
 
+  useEffect(() => () => { closeTweenRef.current?.kill(); }, []);
+
   const handleClose = () => {
     gsap.to(backdropRef.current, { opacity: 0, duration: 0.18 });
-    gsap.to(panelRef.current, {
+    closeTweenRef.current = gsap.to(panelRef.current, {
       opacity: 0,
       y: 16,
       duration: 0.18,
@@ -104,9 +107,10 @@ export function VisualPrimitiveCard({ primitive }: VisualPrimitiveCardProps) {
 
   return (
     <>
-      <div
+      <button
+        type="button"
         onClick={() => setExpanded(true)}
-        className="mt-2 border-2 border-[#2B9DB0]/20 rounded-xl p-3 bg-[#2B9DB0]/5 flex items-center gap-3 cursor-pointer hover:border-[#2B9DB0]/50 hover:bg-[#2B9DB0]/10 active:scale-[0.98] transition-all"
+        className="mt-2 w-full text-left border-2 border-[#2B9DB0]/20 rounded-xl p-3 bg-[#2B9DB0]/5 flex items-center gap-3 cursor-pointer hover:border-[#2B9DB0]/50 hover:bg-[#2B9DB0]/10 active:scale-[0.98] transition-all"
       >
         <div className="w-10 h-10 rounded-lg bg-[#2B9DB0]/10 flex items-center justify-center text-lg flex-shrink-0">
           {icon}
@@ -122,7 +126,7 @@ export function VisualPrimitiveCard({ primitive }: VisualPrimitiveCardProps) {
             <path d="M8 5v14l11-7z" />
           </svg>
         </div>
-      </div>
+      </button>
 
       {expanded && (
         <ExpandedModal primitive={primitive} onClose={() => setExpanded(false)} />

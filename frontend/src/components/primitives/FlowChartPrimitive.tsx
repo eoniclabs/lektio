@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useId, useRef } from "react";
 import gsap from "gsap";
 import { useAnimation } from "../../contexts/AnimationContext";
 
@@ -21,6 +21,7 @@ export function FlowChartPrimitive() {
   const { state, primitive } = useAnimation();
   const { currentStep } = state;
   const svgRef = useRef<SVGSVGElement>(null);
+  const uid = useId();
 
   const W = 300;
   const H = 260;
@@ -28,9 +29,10 @@ export function FlowChartPrimitive() {
   const NODE_H = 36;
   const DIAMOND_SIZE = 40;
 
-  // Collect nodes and edges visible up to currentStep
+  // Collect nodes and edges visible up to currentStep, keyed by the step that introduced them
   const nodes: FlowNode[] = [];
-  const edges: FlowEdge[] = [];
+  const stepToNodes = new Map<number, FlowNode[]>();
+  const stepToEdges = new Map<number, FlowEdge[]>();
 
   for (let i = 0; i <= currentStep; i++) {
     const step = primitive.steps[i];
@@ -38,21 +40,24 @@ export function FlowChartPrimitive() {
     const d = step.data as Record<string, unknown>;
 
     if (step.action === "addNode") {
-      nodes.push({
+      const n: FlowNode = {
         id: d.id as string,
         label: d.label as string,
         shape: (d.shape as FlowNode["shape"]) ?? "rect",
         x: (d.x as number) ?? 50,
         y: (d.y as number) ?? 50,
         color: d.color as string | undefined,
-      });
+      };
+      nodes.push(n);
+      stepToNodes.set(i, [...(stepToNodes.get(i) ?? []), n]);
     }
     if (step.action === "addEdge") {
-      edges.push({
+      const e: FlowEdge = {
         from: d.from as string,
         to: d.to as string,
         label: d.label as string | undefined,
-      });
+      };
+      stepToEdges.set(i, [...(stepToEdges.get(i) ?? []), e]);
     }
   }
 
@@ -133,40 +138,19 @@ export function FlowChartPrimitive() {
     return (
       <g key={`${e.from}-${e.to}`} data-step={stepIndex}>
         <defs>
-          <marker id={`arrow-${stepIndex}`} markerWidth="8" markerHeight="8"
+          <marker id={`arrow-${uid}-${stepIndex}`} markerWidth="8" markerHeight="8"
             refX="6" refY="3" orient="auto">
             <path d="M0,0 L0,6 L8,3 z" fill="#9ca3af" />
           </marker>
         </defs>
         <path d={`M ${x1} ${y1} Q ${x1} ${my} ${x2} ${y2}`}
           stroke="#9ca3af" strokeWidth="1.5" fill="none"
-          markerEnd={`url(#arrow-${stepIndex})`} />
+          markerEnd={`url(#arrow-${uid}-${stepIndex})`} />
         {e.label && (
           <text x={mx + 6} y={my} fontSize="9" fill="#9ca3af" textAnchor="start">{e.label}</text>
         )}
       </g>
     );
-  }
-
-  // Map each node/edge back to the step that introduced it
-  const stepToNodes = new Map<number, FlowNode[]>();
-  const stepToEdges = new Map<number, FlowEdge[]>();
-  for (let i = 0; i <= currentStep; i++) {
-    const step = primitive.steps[i];
-    if (!step) continue;
-    const d = step.data as Record<string, unknown>;
-    if (step.action === "addNode") {
-      stepToNodes.set(i, [...(stepToNodes.get(i) ?? []), {
-        id: d.id as string, label: d.label as string,
-        shape: (d.shape as FlowNode["shape"]) ?? "rect",
-        x: d.x as number, y: d.y as number, color: d.color as string | undefined,
-      }]);
-    }
-    if (step.action === "addEdge") {
-      stepToEdges.set(i, [...(stepToEdges.get(i) ?? []), {
-        from: d.from as string, to: d.to as string, label: d.label as string | undefined,
-      }]);
-    }
   }
 
   return (
