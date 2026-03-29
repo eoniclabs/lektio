@@ -20,6 +20,7 @@ builder.Services.AddHttpClient("claude", client =>
 
 // Claude service (scoped – uses IHttpClientFactory)
 builder.Services.AddScoped<IClaudeService, ClaudeService>();
+builder.Services.AddScoped<IImageAnalysisService, ImageAnalysisService>();
 
 // JSON options – camelCase for frontend compatibility
 builder.Services.ConfigureHttpJsonOptions(options =>
@@ -49,5 +50,6 @@ app.UseCors();
 app.MapHealthEndpoints();
 app.MapProfileEndpoints();
 app.MapChatEndpoints();
+app.MapImageEndpoints();
 
 app.Run();

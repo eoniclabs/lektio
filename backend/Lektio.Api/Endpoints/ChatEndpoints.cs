@@ -72,6 +72,7 @@ public static class ChatEndpoints
                 profile,
                 history,
                 req.Message,
+                req.ImageContext,
                 async token =>
                 {
                     fullText.Append(token);

@@ -23,8 +23,9 @@ export function useChat(profileId: string) {
   }, []);
 
   const sendMessage = useCallback(
-    async (text: string) => {
-      if (!text.trim() || isLoading) return;
+    async (text: string, imageContext?: string, imageDataUrl?: string) => {
+      if (!text.trim() && !imageContext) return;
+      if (isLoading) return;
 
       // Abort any previous request and create a fresh controller
       abortRef.current?.abort();
@@ -35,6 +36,7 @@ export function useChat(profileId: string) {
         id: uuidv4(),
         role: "user",
         content: text.trim(),
+        imageUrl: imageDataUrl,
         timestamp: new Date().toISOString(),
       });
 
@@ -50,7 +52,7 @@ export function useChat(profileId: string) {
 
       try {
         await sendChatMessage(
-          { message: text.trim(), conversationId, profileId },
+          { message: text.trim(), conversationId, profileId, imageContext },
           {
             onDelta: (token) => updateLastMessage(token),
             onDone: (response) => {

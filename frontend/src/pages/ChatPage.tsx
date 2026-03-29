@@ -1,14 +1,19 @@
+import { useCallback } from "react";
 import { OnboardingModal } from "../components/onboarding/OnboardingModal";
 import { MessageList } from "../components/chat/MessageList";
 import { ChatInput } from "../components/chat/ChatInput";
+import { CameraOverlay } from "../components/camera/CameraOverlay";
+import { ImagePreview } from "../components/camera/ImagePreview";
 import { useOnboarding } from "../hooks/useOnboarding";
 import { useChat } from "../hooks/useChat";
 import { useSpeech } from "../hooks/useSpeech";
+import { useCamera } from "../hooks/useCamera";
 import type { ChatMessage } from "../types";
 
 export function ChatPage() {
   const { profileId, isReady, showOnboarding, completeOnboarding } = useOnboarding();
   const { messages, isLoading, sendMessage } = useChat(profileId ?? "");
+  const camera = useCamera();
 
   const { isListening, isSupported, startListening, stopListening } = useSpeech(
     (text) => sendMessage(text),
@@ -20,9 +25,15 @@ export function ChatPage() {
   };
 
   const handleSave = (_message: ChatMessage) => {
-    // TODO: implement in M5 (Notebook)
     console.info("Save to notebook:", _message.id);
   };
+
+  const handleAccept = useCallback(async () => {
+    const accepted = await camera.accept();
+    if (accepted) {
+      await sendMessage("", accepted.result.extractedText, accepted.dataUrl);
+    }
+  }, [camera, sendMessage]);
 
   if (!isReady) {
     return (
@@ -66,6 +77,28 @@ export function ChatPage() {
           onMicClick={handleMicClick}
           isListening={isListening}
           isSpeechSupported={isSupported}
+          onCameraClick={camera.open}
+        />
+      )}
+
+      {/* Camera overlay */}
+      {camera.state === "active" && (
+        <CameraOverlay
+          videoRef={camera.videoRef}
+          onClose={camera.close}
+          onCapture={camera.capture}
+          onFlip={camera.flipCamera}
+          onReady={camera.startVideoStream}
+        />
+      )}
+
+      {/* Image preview */}
+      {camera.state === "preview" && camera.capturedDataUrl && (
+        <ImagePreview
+          dataUrl={camera.capturedDataUrl}
+          isAnalyzing={camera.isAnalyzing}
+          onRetake={camera.retake}
+          onAccept={handleAccept}
         />
       )}
 

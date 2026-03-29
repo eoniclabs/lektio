@@ -8,6 +8,7 @@ public interface IClaudeService
         StudentProfile profile,
         List<ConversationMessage> history,
         string userMessage,
+        string? imageContext,
         Func<string, Task> onDelta,
         CancellationToken cancellationToken = default);
 }

@@ -1,11 +1,12 @@
 import { useState, useRef, useEffect } from "react";
 
 interface ChatInputProps {
-  onSend: (text: string) => void;
+  onSend: (text: string, imageContext?: string, imageDataUrl?: string) => void;
   isLoading: boolean;
   onMicClick: () => void;
   isListening: boolean;
   isSpeechSupported: boolean;
+  onCameraClick: () => void;
 }
 
 export function ChatInput({
@@ -14,6 +15,7 @@ export function ChatInput({
   onMicClick,
   isListening,
   isSpeechSupported,
+  onCameraClick,
 }: ChatInputProps) {
   const [value, setValue] = useState("");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -42,11 +44,11 @@ export function ChatInput({
   return (
     <div className="border-t border-gray-100 bg-white px-3 py-3">
       <div className="flex items-end gap-2 bg-gray-50 rounded-2xl px-3 py-2">
-        {/* Camera button (placeholder until M3) */}
+        {/* Camera button */}
         <button
-          title="Fota en boksida (kommer snart)"
-          disabled
-          className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-xl text-gray-300 cursor-not-allowed"
+          onClick={onCameraClick}
+          title="Fota en boksida"
+          className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-xl text-gray-400 hover:text-[#2B9DB0] hover:bg-[#2B9DB0]/10 transition-colors"
         >
           <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path
