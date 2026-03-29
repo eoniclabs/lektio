@@ -3,6 +3,7 @@ import { WebSpeechService } from "../services/speech";
 
 export function useSpeech(onResult: (text: string) => void) {
   const [isListening, setIsListening] = useState(false);
+  const [interimText, setInterimText] = useState("");
   const onResultRef = useRef(onResult);
   onResultRef.current = onResult;
 
@@ -17,15 +18,21 @@ export function useSpeech(onResult: (text: string) => void) {
   const startListening = () => {
     if (!isSupported || isListening) return;
     setIsListening(true);
-    speechService.startListening((text) => {
-      onResultRef.current(text);
-      setIsListening(false);
+    speechService.startListening((text, isFinal) => {
+      if (isFinal) {
+        onResultRef.current(text);
+        setInterimText("");
+        setIsListening(false);
+      } else {
+        setInterimText(text);
+      }
     });
   };
 
   const stopListening = () => {
     speechService.stopListening();
     setIsListening(false);
+    setInterimText("");
   };
 
   // Clean up on unmount
@@ -33,5 +40,5 @@ export function useSpeech(onResult: (text: string) => void) {
     return () => speechService.stopListening();
   }, [speechService]);
 
-  return { isListening, isSupported, startListening, stopListening };
+  return { isListening, isSupported, startListening, stopListening, interimText };
 }
