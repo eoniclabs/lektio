@@ -16,6 +16,9 @@ public class ImageAnalysisService : IImageAnalysisService
         PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower
     };
 
+    private static readonly HashSet<string> ValidMediaTypes =
+        ["image/jpeg", "image/png", "image/gif", "image/webp"];
+
     private const string SystemPrompt =
         "Du är en OCR-assistent. Extrahera allt text från bilden exakt som det är skrivet. " +
         "Bevara formler, rubriker och listor. Svara med JSON: { \"extractedText\": \"...\", \"summary\": \"...\" } " +
@@ -36,6 +39,9 @@ public class ImageAnalysisService : IImageAnalysisService
         string mediaType,
         CancellationToken ct = default)
     {
+        if (!ValidMediaTypes.Contains(mediaType))
+            throw new ArgumentException($"Unsupported media type: {mediaType}", nameof(mediaType));
+
         var apiKey = _configuration["Claude:ApiKey"]
             ?? throw new InvalidOperationException("Claude:ApiKey is not configured.");
         var model = _configuration["Claude:Model"] ?? "claude-opus-4-5";
@@ -43,7 +49,7 @@ public class ImageAnalysisService : IImageAnalysisService
         var requestBody = new
         {
             model,
-            max_tokens = 1024,
+            max_tokens = 2048,
             system = SystemPrompt,
             messages = new[]
             {

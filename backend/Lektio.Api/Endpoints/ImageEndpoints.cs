@@ -26,6 +26,10 @@ public static class ImageEndpoints
             var result = await imageService.AnalyzeAsync(req.Image, req.MediaType, ct);
             return Results.Ok(result);
         }
+        catch (ArgumentException ex)
+        {
+            return Results.BadRequest(ex.Message);
+        }
         catch (Exception ex)
         {
             logger.LogError(ex, "Image analysis failed");

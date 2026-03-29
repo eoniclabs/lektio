@@ -1,4 +1,4 @@
-import { useLayoutEffect } from "react";
+import { useLayoutEffect, useRef } from "react";
 import gsap from "gsap";
 import type { RefObject } from "react";
 
@@ -17,18 +17,16 @@ export function CameraOverlay({
   onFlip,
   onReady,
 }: CameraOverlayProps) {
+  const overlayRef = useRef<HTMLDivElement>(null);
+
   useLayoutEffect(() => {
-    gsap.fromTo(
-      "#camera-overlay",
-      { opacity: 0 },
-      { opacity: 1, duration: 0.25 },
-    );
+    gsap.fromTo(overlayRef.current, { opacity: 0 }, { opacity: 1, duration: 0.25 });
     onReady();
   }, [onReady]);
 
   return (
     <div
-      id="camera-overlay"
+      ref={overlayRef}
       className="fixed inset-0 z-50 bg-black flex flex-col"
     >
       {/* Video fill */}

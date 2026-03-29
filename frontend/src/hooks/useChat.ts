@@ -35,7 +35,7 @@ export function useChat(profileId: string) {
       addMessage({
         id: uuidv4(),
         role: "user",
-        content: text.trim(),
+        content: text.trim() || (imageDataUrl ? "[Foto av boksida]" : ""),
         imageUrl: imageDataUrl,
         timestamp: new Date().toISOString(),
       });

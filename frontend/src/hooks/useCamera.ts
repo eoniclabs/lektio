@@ -53,6 +53,9 @@ export function useCamera() {
       const result = await analyzeImage(base64, "image/jpeg");
       setAnalysisResult(result);
       return { result, dataUrl: capturedDataUrl };
+    } catch (err) {
+      console.error("Image analysis failed:", err);
+      return null;
     } finally {
       setIsAnalyzing(false);
       cameraService.stopStream();
