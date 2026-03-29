@@ -10,6 +10,8 @@ builder.Services.AddSingleton<MongoDbContext>();
 // Repositories (singleton – stateless, hold collection references)
 builder.Services.AddSingleton<IProfileRepository, ProfileRepository>();
 builder.Services.AddSingleton<IConversationRepository, ConversationRepository>();
+builder.Services.AddScoped<INotebookRepository, NotebookRepository>();
+builder.Services.AddScoped<IStreakService, StreakService>();
 
 // Claude HTTP client
 builder.Services.AddHttpClient("claude", client =>
@@ -60,5 +62,6 @@ app.MapProfileEndpoints();
 app.MapChatEndpoints();
 app.MapImageEndpoints();
 app.MapTtsEndpoints();
+app.MapNotebookEndpoints();
 
 app.Run();

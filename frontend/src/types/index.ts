@@ -62,3 +62,18 @@ export interface OnboardingData {
   schoolLevel: SchoolLevel;
   preferences: StudentPreferences;
 }
+
+export interface NotebookEntry {
+  id: string;
+  profileId: string;
+  content: string;
+  title?: string;
+  tags: string[];
+  createdAt: string;
+}
+
+export interface ProfileStats {
+  streakDays: number;
+  totalMessages: number;
+  conceptMasteries: Array<{ concept: string; level: number; lastSeenAt: string }>;
+}
