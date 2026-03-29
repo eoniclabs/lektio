@@ -62,12 +62,14 @@ export function useAnimationDirector(steps: VisualStep[]) {
 
   // Speak narration when step becomes active
   useEffect(() => {
-    if (!audioEnabled || playbackState === "idle") return;
+    if (!audioEnabled || playbackState !== "playing") {
+      ttsRef.current.stop();
+      return;
+    }
     const narration = steps[currentStep]?.narration;
     if (narration) ttsRef.current.speak(narration, { rate: speed });
     return () => ttsRef.current.stop();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentStep, audioEnabled]);
+  }, [currentStep, audioEnabled, playbackState, speed, steps]);
 
   // Clean up on unmount
   useEffect(() => () => {

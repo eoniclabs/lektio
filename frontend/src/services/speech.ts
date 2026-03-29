@@ -48,7 +48,12 @@ export class WebSpeechService implements SpeechService {
     this.recognition.onerror = (event: any) => {
       const error = event.error as string;
       if (error === "not-allowed") {
-        onResult("Mikrofonåtkomst nekad", true);
+        onResult("Mikrofonåtkomst nekad.", true);
+      } else if (error === "no-speech") {
+        onResult("Inget tal uppfattades.", true);
+      } else {
+        console.error(`Speech recognition error: ${error}`, event);
+        onResult("Ett fel inträffade med röstigenkänning.", true);
       }
     };
 

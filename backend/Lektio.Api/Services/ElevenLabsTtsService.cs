@@ -5,6 +5,9 @@ namespace Lektio.Api.Services;
 
 public class ElevenLabsTtsService : ITtsService
 {
+    private const string DefaultVoiceId = "pNInz6obpgDQGcFmaJgB";
+    private const string ModelId = "eleven_multilingual_v2";
+
     private readonly IHttpClientFactory _factory;
     private readonly IConfiguration _config;
     private readonly ILogger<ElevenLabsTtsService> _logger;
@@ -21,10 +24,11 @@ public class ElevenLabsTtsService : ITtsService
 
     public bool IsConfigured => !string.IsNullOrEmpty(_config["ElevenLabs:ApiKey"]);
 
-    public async Task StreamAsync(string text, HttpResponse response, CancellationToken ct)
+    public async Task StreamAsync(string text, Stream outputStream, CancellationToken ct)
     {
-        var apiKey = _config["ElevenLabs:ApiKey"]!;
-        var voiceId = _config["ElevenLabs:VoiceId"] ?? "pNInz6obpgDQGcFmaJgB";
+        var apiKey = _config["ElevenLabs:ApiKey"]
+            ?? throw new InvalidOperationException("ElevenLabs:ApiKey is not configured.");
+        var voiceId = _config["ElevenLabs:VoiceId"] ?? DefaultVoiceId;
         var client = _factory.CreateClient("elevenlabs");
 
         using var req = new HttpRequestMessage(
@@ -35,7 +39,7 @@ public class ElevenLabsTtsService : ITtsService
         req.Content = JsonContent.Create(new TtsPayload
         {
             Text = text,
-            ModelId = "eleven_multilingual_v2",
+            ModelId = ModelId,
             VoiceSettings = new VoiceSettings
             {
                 Stability = 0.5f,
@@ -53,7 +57,7 @@ public class ElevenLabsTtsService : ITtsService
         }
 
         await using var stream = await res.Content.ReadAsStreamAsync(ct);
-        await stream.CopyToAsync(response.Body, ct);
+        await stream.CopyToAsync(outputStream, ct);
     }
 
     private sealed class TtsPayload

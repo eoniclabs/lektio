@@ -7,32 +7,33 @@ public static class TtsEndpoints
 {
     private sealed class TtsHandler;
 
+    private const int MaxTextLength = 2000;
+
     public static void MapTtsEndpoints(this WebApplication app)
     {
-        app.MapPost("/api/tts", HandleTtsAsync);
+        app.MapPost("/api/tts", HandleTts);
     }
 
-    private static async Task HandleTtsAsync(
+    private static IResult HandleTts(
         TtsRequest req,
         ITtsService tts,
         ILogger<TtsHandler> logger,
-        HttpContext ctx,
         CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(req.Text))
-        {
-            ctx.Response.StatusCode = 400;
-            return;
-        }
+            return Results.BadRequest("Text is required.");
+
+        if (req.Text.Length > MaxTextLength)
+            return Results.BadRequest($"Text exceeds maximum length of {MaxTextLength} characters.");
 
         if (!tts.IsConfigured)
         {
-            ctx.Response.StatusCode = 503;
-            await ctx.Response.WriteAsync("TTS not configured", ct);
-            return;
+            logger.LogWarning("TTS request received but ElevenLabs is not configured.");
+            return Results.Problem("TTS not configured", statusCode: 503);
         }
 
-        ctx.Response.ContentType = "audio/mpeg";
-        await tts.StreamAsync(req.Text, ctx.Response, ct);
+        return Results.Stream(
+            outputStream => tts.StreamAsync(req.Text, outputStream, ct),
+            "audio/mpeg");
     }
 }
