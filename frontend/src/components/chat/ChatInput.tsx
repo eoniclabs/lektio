@@ -7,6 +7,7 @@ interface ChatInputProps {
   isListening: boolean;
   isSpeechSupported: boolean;
   onCameraClick: () => void;
+  interimText?: string;
 }
 
 export function ChatInput({
@@ -16,6 +17,7 @@ export function ChatInput({
   isListening,
   isSpeechSupported,
   onCameraClick,
+  interimText,
 }: ChatInputProps) {
   const [value, setValue] = useState("");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -63,12 +65,15 @@ export function ChatInput({
 
         <textarea
           ref={textareaRef}
-          value={value}
+          value={isListening && interimText ? interimText : value}
           onChange={(e) => setValue(e.target.value)}
           onKeyDown={handleKeyDown}
+          readOnly={isListening}
           placeholder="Fråga om det du pluggar..."
           rows={1}
-          className="flex-1 bg-transparent text-sm text-gray-800 placeholder-gray-400 resize-none outline-none py-1 max-h-[120px]"
+          className={`flex-1 bg-transparent text-sm resize-none outline-none py-1 max-h-[120px] placeholder-gray-400 ${
+            isListening && interimText ? "text-gray-400" : "text-gray-800"
+          }`}
         />
 
         {/* Mic button */}

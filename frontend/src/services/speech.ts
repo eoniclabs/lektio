@@ -4,7 +4,7 @@
  * Can be swapped for native STT later.
  */
 export interface SpeechService {
-  startListening(onResult: (text: string) => void): void;
+  startListening(onResult: (text: string, isFinal: boolean) => void): void;
   stopListening(): void;
   isSupported(): boolean;
 }
@@ -27,19 +27,29 @@ export class WebSpeechService implements SpeechService {
     return getSpeechRecognition() !== null;
   }
 
-  startListening(onResult: (text: string) => void): void {
+  startListening(onResult: (text: string, isFinal: boolean) => void): void {
     const Ctor = getSpeechRecognition();
     if (!Ctor) return;
 
     this.recognition = new Ctor();
     this.recognition.lang = "sv-SE";
     this.recognition.continuous = false;
-    this.recognition.interimResults = false;
+    this.recognition.interimResults = true;
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     this.recognition.onresult = (event: any) => {
-      const text = event.results[0][0].transcript;
-      onResult(text);
+      const result = event.results[event.results.length - 1];
+      const text = result[0].transcript;
+      const isFinal = result.isFinal as boolean;
+      onResult(text, isFinal);
+    };
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    this.recognition.onerror = (event: any) => {
+      const error = event.error as string;
+      if (error === "not-allowed") {
+        onResult("Mikrofonåtkomst nekad", true);
+      }
     };
 
     this.recognition.start();

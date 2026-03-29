@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { OnboardingModal } from "../components/onboarding/OnboardingModal";
 import { MessageList } from "../components/chat/MessageList";
 import { ChatInput } from "../components/chat/ChatInput";
@@ -8,16 +8,31 @@ import { useOnboarding } from "../hooks/useOnboarding";
 import { useChat } from "../hooks/useChat";
 import { useSpeech } from "../hooks/useSpeech";
 import { useCamera } from "../hooks/useCamera";
+import { useTts } from "../hooks/useTts";
 import type { ChatMessage } from "../types";
 
 export function ChatPage() {
   const { profileId, isReady, showOnboarding, completeOnboarding } = useOnboarding();
   const { messages, isLoading, sendMessage } = useChat(profileId ?? "");
   const camera = useCamera();
+  const { speak: speakNarration } = useTts();
+  const prevLoadingRef = useRef(isLoading);
 
-  const { isListening, isSupported, startListening, stopListening } = useSpeech(
+  const { isListening, isSupported, startListening, stopListening, interimText } = useSpeech(
     (text) => sendMessage(text),
   );
+
+  // Auto-play narration when a new assistant message arrives
+  useEffect(() => {
+    const wasLoading = prevLoadingRef.current;
+    prevLoadingRef.current = isLoading;
+    if (wasLoading && !isLoading) {
+      const last = messages[messages.length - 1];
+      if (last?.role === "assistant" && last.narration) {
+        speakNarration(last.narration);
+      }
+    }
+  }, [isLoading, messages, speakNarration]);
 
   const handleMicClick = () => {
     if (isListening) stopListening();
@@ -78,6 +93,7 @@ export function ChatPage() {
           isListening={isListening}
           isSpeechSupported={isSupported}
           onCameraClick={camera.open}
+          interimText={interimText}
         />
       )}
 

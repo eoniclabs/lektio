@@ -1,3 +1,5 @@
+import { useTts } from "../../hooks/useTts";
+
 interface MessageActionsProps {
   content: string;
   narration?: string;
@@ -5,12 +7,14 @@ interface MessageActionsProps {
 }
 
 export function MessageActions({ content, narration, onSave }: MessageActionsProps) {
+  const { speak, stop, isSpeaking } = useTts();
+
   const handleRead = () => {
-    if (!("speechSynthesis" in window)) return;
-    window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(narration ?? content.replace(/[#*`_~]/g, ""));
-    utterance.lang = "sv-SE";
-    window.speechSynthesis.speak(utterance);
+    if (isSpeaking) {
+      stop();
+    } else {
+      speak(narration ?? content.replace(/[#*`_~]/g, ""));
+    }
   };
 
   const handleCopy = async () => {
@@ -26,8 +30,8 @@ export function MessageActions({ content, narration, onSave }: MessageActionsPro
       <ActionButton title="Spara till anteckningsbok" onClick={onSave}>
         ⭐
       </ActionButton>
-      <ActionButton title="Läs upp" onClick={handleRead}>
-        🔊
+      <ActionButton title={isSpeaking ? "Stoppa" : "Läs upp"} onClick={handleRead}>
+        {isSpeaking ? "⏹" : "🔊"}
       </ActionButton>
       <ActionButton title="Kopiera" onClick={handleCopy}>
         📋

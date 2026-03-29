@@ -18,9 +18,17 @@ builder.Services.AddHttpClient("claude", client =>
     client.Timeout = TimeSpan.FromSeconds(120);
 });
 
+// ElevenLabs HTTP client
+builder.Services.AddHttpClient("elevenlabs", client =>
+{
+    client.BaseAddress = new Uri("https://api.elevenlabs.io");
+    client.Timeout = TimeSpan.FromSeconds(30);
+});
+
 // Claude service (scoped – uses IHttpClientFactory)
 builder.Services.AddScoped<IClaudeService, ClaudeService>();
 builder.Services.AddScoped<IImageAnalysisService, ImageAnalysisService>();
+builder.Services.AddScoped<ITtsService, ElevenLabsTtsService>();
 
 // JSON options – camelCase for frontend compatibility
 builder.Services.ConfigureHttpJsonOptions(options =>
@@ -51,5 +59,6 @@ app.MapHealthEndpoints();
 app.MapProfileEndpoints();
 app.MapChatEndpoints();
 app.MapImageEndpoints();
+app.MapTtsEndpoints();
 
 app.Run();
