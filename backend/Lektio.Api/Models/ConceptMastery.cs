@@ -6,5 +6,5 @@ public class ConceptMastery
 
     public int Level { get; set; }
 
-    public DateTime LastSeenAt { get; set; } = DateTime.UtcNow;
+    public DateTime LastSeenAt { get; set; }
 }

@@ -23,8 +23,8 @@ export async function saveToNotebook(entry: {
   return res.json();
 }
 
-export async function deleteFromNotebook(id: string): Promise<void> {
-  const res = await fetch(`${BASE_URL}/api/notebook/${id}`, {
+export async function deleteFromNotebook(id: string, profileId: string): Promise<void> {
+  const res = await fetch(`${BASE_URL}/api/notebook/${id}?profileId=${encodeURIComponent(profileId)}`, {
     method: "DELETE",
   });
   if (!res.ok) throw new Error("Failed to delete notebook entry");

@@ -1,5 +1,6 @@
 using Lektio.Api.Models;
 using Lektio.Api.Services;
+using Microsoft.AspNetCore.Mvc;
 
 namespace Lektio.Api.Endpoints;
 
@@ -21,12 +22,15 @@ public static class NotebookEndpoints
             INotebookRepository repo,
             CancellationToken ct) =>
         {
+            if (string.IsNullOrWhiteSpace(req.ProfileId) || string.IsNullOrWhiteSpace(req.Content))
+                return Results.BadRequest("ProfileId and Content are required.");
+
             var entry = new NotebookEntry
             {
                 ProfileId = req.ProfileId,
                 Content = req.Content,
                 Title = req.Title ?? string.Empty,
-                Tags = req.Tags ?? new List<string>()
+                Tags = req.Tags ?? []
             };
 
             var created = await repo.AddAsync(entry, ct);
@@ -35,10 +39,14 @@ public static class NotebookEndpoints
 
         app.MapDelete("/api/notebook/{id}", async (
             string id,
+            [FromQuery] string profileId,
             INotebookRepository repo,
             CancellationToken ct) =>
         {
-            await repo.DeleteAsync(id, ct);
+            if (string.IsNullOrWhiteSpace(profileId))
+                return Results.BadRequest("profileId is required.");
+
+            await repo.DeleteAsync(id, profileId, ct);
             return Results.NoContent();
         });
     }

@@ -18,19 +18,32 @@ export function useNotebook(profileId: string) {
     setLoading(true);
     fetchNotebook(profileId)
       .then(setEntries)
-      .catch(() => {})
+      .catch((err) => console.error("Failed to fetch notebook:", err))
       .finally(() => setLoading(false));
   }, [profileId, setEntries, setLoading]);
 
   const save = async (content: string, title?: string, tags?: string[]) => {
-    const entry = await saveToNotebook({ profileId, content, title, tags });
-    addEntry(entry);
-    return entry;
+    try {
+      const entry = await saveToNotebook({ profileId, content, title, tags });
+      addEntry(entry);
+      return entry;
+    } catch (err) {
+      console.error("Failed to save notebook entry:", err);
+      return null;
+    }
   };
 
   const remove = async (id: string) => {
-    await deleteFromNotebook(id);
+    // Optimistic remove
+    const snapshot = [...entries];
     removeEntry(id);
+    try {
+      await deleteFromNotebook(id, profileId);
+    } catch (err) {
+      console.error("Failed to delete notebook entry:", err);
+      // Roll back
+      setEntries(snapshot);
+    }
   };
 
   return { entries, isLoading, save, remove };

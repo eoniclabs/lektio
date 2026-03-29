@@ -15,31 +15,35 @@ public class StreakService : IStreakService
         if (profile is null) return;
 
         var today = DateTime.UtcNow.Date;
+        var lastDate = profile.LastActiveDate?.Date;
 
-        if (profile.LastActiveDate is null)
+        // Determine new streak value
+        int newStreakDays;
+        bool updateStreak;
+
+        if (lastDate is null)
         {
-            profile.StreakDays = 1;
+            newStreakDays = 1;
+            updateStreak = true;
+        }
+        else if (lastDate == today)
+        {
+            // Already active today — only increment TotalMessages
+            newStreakDays = profile.StreakDays;
+            updateStreak = false;
+        }
+        else if (lastDate == today.AddDays(-1))
+        {
+            newStreakDays = profile.StreakDays + 1;
+            updateStreak = true;
         }
         else
         {
-            var lastDate = profile.LastActiveDate.Value.Date;
-            if (lastDate == today)
-            {
-                // Already active today – just increment messages
-            }
-            else if (lastDate == today.AddDays(-1))
-            {
-                profile.StreakDays += 1;
-            }
-            else
-            {
-                profile.StreakDays = 1;
-            }
+            newStreakDays = 1;
+            updateStreak = true;
         }
 
-        profile.LastActiveDate = DateTime.UtcNow;
-        profile.TotalMessages += 1;
-
-        await _profiles.UpdateAsync(profileId, profile);
+        // Atomic update: $inc TotalMessages + conditional $set StreakDays/LastActiveDate
+        await _profiles.UpdateStreakAsync(profileId, newStreakDays, updateStreak, DateTime.UtcNow, ct);
     }
 }

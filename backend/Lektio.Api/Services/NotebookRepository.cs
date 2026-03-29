@@ -28,8 +28,8 @@ public class NotebookRepository : INotebookRepository
         return entry;
     }
 
-    public async Task DeleteAsync(string id, CancellationToken ct)
+    public async Task DeleteAsync(string id, string profileId, CancellationToken ct)
     {
-        await _collection.DeleteOneAsync(e => e.Id == id, ct);
+        await _collection.DeleteOneAsync(e => e.Id == id && e.ProfileId == profileId, ct);
     }
 }

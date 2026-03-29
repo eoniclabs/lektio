@@ -1,6 +1,7 @@
 using Lektio.Api.Infrastructure;
 using Lektio.Api.Models;
 using MongoDB.Driver;
+using MongoDB.Driver.Linq;
 
 namespace Lektio.Api.Services;
 
@@ -37,5 +38,17 @@ public class ProfileRepository : IProfileRepository
         updated.UpdatedAt = DateTime.UtcNow;
         await _collection.ReplaceOneAsync(p => p.Id == id, updated);
         return updated;
+    }
+
+    public async Task UpdateStreakAsync(string profileId, int newStreakDays, bool updateStreak, DateTime lastActiveDate, CancellationToken ct)
+    {
+        var update = Builders<StudentProfile>.Update
+            .Inc(p => p.TotalMessages, 1)
+            .Set(p => p.LastActiveDate, lastActiveDate);
+
+        if (updateStreak)
+            update = update.Set(p => p.StreakDays, newStreakDays);
+
+        await _collection.UpdateOneAsync(p => p.Id == profileId, update, cancellationToken: ct);
     }
 }

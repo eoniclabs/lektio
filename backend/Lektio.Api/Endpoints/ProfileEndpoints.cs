@@ -31,14 +31,15 @@ public static class ProfileEndpoints
             var profile = await repo.GetByIdAsync(id);
             if (profile is null) return Results.NotFound();
 
-            var stats = new
-            {
-                streakDays = profile.StreakDays,
-                totalMessages = profile.TotalMessages,
-                conceptMasteries = profile.ConceptMasteries
-            };
-
-            return Results.Ok(stats);
+            return Results.Ok(new ProfileStatsResponse(
+                profile.StreakDays,
+                profile.TotalMessages,
+                profile.ConceptMasteries));
         });
     }
 }
+
+public record ProfileStatsResponse(
+    int StreakDays,
+    int TotalMessages,
+    List<Lektio.Api.Models.ConceptMastery> ConceptMasteries);

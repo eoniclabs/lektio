@@ -44,10 +44,14 @@ export function ChatPage() {
   // Fetch profile stats on mount and after each completed message
   useEffect(() => {
     if (!profileId) return;
-    fetchProfileStats(profileId)
-      .then(setProfileStats)
-      .catch(() => {});
-  }, [profileId, isLoading]);
+    const wasLoading = prevLoadingRef.current;
+    // On mount (wasLoading undefined → false) or when loading transitions to done
+    if (!isLoading && (wasLoading || profileStats === null)) {
+      fetchProfileStats(profileId)
+        .then(setProfileStats)
+        .catch((err) => console.error("Failed to fetch profile stats:", err));
+    }
+  }, [profileId, isLoading]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleMicClick = () => {
     if (isListening) stopListening();
