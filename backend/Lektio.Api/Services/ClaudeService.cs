@@ -30,6 +30,7 @@ public class ClaudeService : IClaudeService
         StudentProfile profile,
         List<ConversationMessage> history,
         string userMessage,
+        string? imageContext,
         Func<string, Task> onDelta,
         CancellationToken cancellationToken = default)
     {
@@ -37,11 +38,15 @@ public class ClaudeService : IClaudeService
             ?? throw new InvalidOperationException("Claude:ApiKey is not configured.");
         var model = _configuration["Claude:Model"] ?? "claude-opus-4-5";
 
+        var effectiveMessage = imageContext is not null
+            ? $"[Sidinnehåll från foto:]\n{imageContext}\n\n[Elevens fråga:]\n{userMessage}"
+            : userMessage;
+
         // Build messages from history + current user message.
         // Callers are responsible for trimming history to the desired window size.
         var messages = history
             .Select(m => new { role = m.Role, content = m.Content })
-            .Append(new { role = "user", content = userMessage })
+            .Append(new { role = "user", content = effectiveMessage })
             .ToList<object>();
 
         var systemPrompt = SystemPromptBuilder.Build(profile);
