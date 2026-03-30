@@ -26,6 +26,7 @@ public static class ChatEndpoints
         IClaudeService claude,
         IConversationRepository conversations,
         IProfileRepository profiles,
+        IStreakService streakService,
         HttpContext ctx,
         ILogger<ChatHandler> logger,
         CancellationToken ct)
@@ -122,6 +123,9 @@ public static class ChatEndpoints
                 conversation.Id,
                 new ConversationMessage { Role = "user", Content = req.Message },
                 new ConversationMessage { Role = "assistant", Content = chatResponse.Text });
+
+            // Update streak
+            await streakService.UpdateStreakAsync(req.ProfileId, ct);
 
             // Send done event
             var doneEvent = new SseEvent { Type = "done", Response = chatResponse };

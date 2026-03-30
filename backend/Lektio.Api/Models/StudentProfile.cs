@@ -15,9 +15,13 @@ public class StudentProfile
 
     public StudentPreferences Preferences { get; set; } = new();
 
-    public Dictionary<string, double> ConceptMastery { get; set; } = new();
+    public List<ConceptMastery> ConceptMasteries { get; set; } = new();
 
-    public int StreakDays { get; set; }
+    public int StreakDays { get; set; } = 0;
+
+    public DateTime? LastActiveDate { get; set; } = null;
+
+    public int TotalMessages { get; set; } = 0;
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 

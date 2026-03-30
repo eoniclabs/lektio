@@ -1,15 +1,19 @@
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { OnboardingModal } from "../components/onboarding/OnboardingModal";
 import { MessageList } from "../components/chat/MessageList";
 import { ChatInput } from "../components/chat/ChatInput";
 import { CameraOverlay } from "../components/camera/CameraOverlay";
 import { ImagePreview } from "../components/camera/ImagePreview";
+import { NotebookPage } from "../components/notebook/NotebookPage";
+import { StreakBadge } from "../components/profile/StreakBadge";
 import { useOnboarding } from "../hooks/useOnboarding";
 import { useChat } from "../hooks/useChat";
 import { useSpeech } from "../hooks/useSpeech";
 import { useCamera } from "../hooks/useCamera";
 import { useTts } from "../hooks/useTts";
-import type { ChatMessage } from "../types";
+import { useNotebook } from "../hooks/useNotebook";
+import { fetchProfileStats } from "../services/notebook";
+import type { ChatMessage, ProfileStats } from "../types";
 
 export function ChatPage() {
   const { profileId, isReady, showOnboarding, completeOnboarding } = useOnboarding();
@@ -17,6 +21,9 @@ export function ChatPage() {
   const camera = useCamera();
   const { speak: speakNarration } = useTts();
   const prevLoadingRef = useRef(isLoading);
+  const [showNotebook, setShowNotebook] = useState(false);
+  const [profileStats, setProfileStats] = useState<ProfileStats | null>(null);
+  const notebook = useNotebook(profileId ?? "");
 
   const { isListening, isSupported, startListening, stopListening, interimText } = useSpeech(
     (text) => sendMessage(text),
@@ -34,14 +41,29 @@ export function ChatPage() {
     }
   }, [isLoading, messages, speakNarration]);
 
+  // Fetch profile stats on mount and after each completed message
+  useEffect(() => {
+    if (!profileId) return;
+    const wasLoading = prevLoadingRef.current;
+    // On mount (wasLoading undefined → false) or when loading transitions to done
+    if (!isLoading && (wasLoading || profileStats === null)) {
+      fetchProfileStats(profileId)
+        .then(setProfileStats)
+        .catch((err) => console.error("Failed to fetch profile stats:", err));
+    }
+  }, [profileId, isLoading]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const handleMicClick = () => {
     if (isListening) stopListening();
     else startListening();
   };
 
-  const handleSave = (_message: ChatMessage) => {
-    console.info("Save to notebook:", _message.id);
-  };
+  const handleSave = useCallback(
+    (message: ChatMessage) => {
+      notebook.save(message.content);
+    },
+    [notebook],
+  );
 
   const handleAccept = useCallback(async () => {
     const accepted = await camera.accept();
@@ -70,9 +92,15 @@ export function ChatPage() {
 
         <span className="font-bold text-lg text-[#2B9DB0]">Lektio</span>
 
-        <div className="flex items-center gap-1 text-sm font-semibold text-orange-500">
-          <span>🔥</span>
-          <span>0</span>
+        <div className="flex items-center gap-2">
+          <StreakBadge streakDays={profileStats?.streakDays ?? 0} />
+          <button
+            onClick={() => setShowNotebook(true)}
+            className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 transition-colors text-lg"
+            title="Anteckningsbok"
+          >
+            📓
+          </button>
         </div>
       </header>
 
@@ -115,6 +143,14 @@ export function ChatPage() {
           isAnalyzing={camera.isAnalyzing}
           onRetake={camera.retake}
           onAccept={handleAccept}
+        />
+      )}
+
+      {/* Notebook overlay */}
+      {showNotebook && profileId && (
+        <NotebookPage
+          profileId={profileId}
+          onClose={() => setShowNotebook(false)}
         />
       )}
 

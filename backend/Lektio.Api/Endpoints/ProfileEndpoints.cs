@@ -25,5 +25,21 @@ public static class ProfileEndpoints
             var updated = await repo.UpdateAsync(id, profile);
             return updated is null ? Results.NotFound() : Results.Ok(updated);
         });
+
+        app.MapGet("/api/profiles/{id}/stats", async (string id, IProfileRepository repo) =>
+        {
+            var profile = await repo.GetByIdAsync(id);
+            if (profile is null) return Results.NotFound();
+
+            return Results.Ok(new ProfileStatsResponse(
+                profile.StreakDays,
+                profile.TotalMessages,
+                profile.ConceptMasteries));
+        });
     }
 }
+
+public record ProfileStatsResponse(
+    int StreakDays,
+    int TotalMessages,
+    List<Lektio.Api.Models.ConceptMastery> ConceptMasteries);
