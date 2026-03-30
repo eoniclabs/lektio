@@ -3,8 +3,6 @@ using Lektio.Api.Models;
 using MongoDB.Driver;
 using MongoDB.Driver.Linq;
 
-
-
 namespace Lektio.Api.Services;
 
 public class ProfileRepository : IProfileRepository
@@ -56,21 +54,25 @@ public class ProfileRepository : IProfileRepository
 
     public async Task UpsertConceptMasteriesAsync(string profileId, IEnumerable<string> concepts, CancellationToken ct)
     {
+        // TODO: This is a read-modify-write and not fully atomic. Concurrent calls for the same
+        // profile can lose updates. Consider MongoDB arrayFilters or a per-profile lock for full atomicity.
         var profile = await _collection.Find(p => p.Id == profileId).FirstOrDefaultAsync(ct);
         if (profile is null) return;
 
         var now = DateTime.UtcNow;
+        var masteries = profile.ConceptMasteries ??= [];
+
         foreach (var concept in concepts)
         {
             var normalised = concept.Trim().ToLowerInvariant();
             if (string.IsNullOrWhiteSpace(normalised)) continue;
 
-            var existing = profile.ConceptMasteries
+            var existing = masteries
                 .FirstOrDefault(c => c.Concept.Equals(normalised, StringComparison.OrdinalIgnoreCase));
 
             if (existing is null)
             {
-                profile.ConceptMasteries.Add(new ConceptMastery
+                masteries.Add(new ConceptMastery
                 {
                     Concept = normalised,
                     Level = 1,
@@ -84,7 +86,10 @@ public class ProfileRepository : IProfileRepository
             }
         }
 
-        profile.UpdatedAt = now;
-        await _collection.ReplaceOneAsync(p => p.Id == profileId, profile, cancellationToken: ct);
+        // Use $set on the specific fields instead of replacing the entire document
+        var update = Builders<StudentProfile>.Update
+            .Set(p => p.ConceptMasteries, masteries)
+            .Set(p => p.UpdatedAt, now);
+        await _collection.UpdateOneAsync(p => p.Id == profileId, update, cancellationToken: ct);
     }
 }

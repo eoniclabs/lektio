@@ -27,7 +27,7 @@ public static class ChatEndpoints
         IConversationRepository conversations,
         IProfileRepository profiles,
         IStreakService streakService,
-        IConceptService conceptService,
+        IServiceScopeFactory scopeFactory,
         HttpContext ctx,
         ILogger<ChatHandler> logger,
         CancellationToken ct)
@@ -128,11 +128,13 @@ public static class ChatEndpoints
             // Update streak
             await streakService.UpdateStreakAsync(req.ProfileId, ct);
 
-            // Fire-and-forget concept extraction (non-blocking)
+            // Fire-and-forget concept extraction in a new DI scope (non-blocking)
             _ = Task.Run(async () =>
             {
                 try
                 {
+                    using var scope = scopeFactory.CreateScope();
+                    var conceptService = scope.ServiceProvider.GetRequiredService<IConceptService>();
                     await conceptService.ExtractAndUpdateAsync(req.ProfileId, chatResponse.Text, CancellationToken.None);
                 }
                 catch (Exception ex)
