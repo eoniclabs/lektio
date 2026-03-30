@@ -36,6 +36,19 @@ public static class ProfileEndpoints
                 profile.TotalMessages,
                 profile.ConceptMasteries));
         });
+
+        app.MapGet("/api/profiles/{id}/concepts", async (string id, IProfileRepository repo) =>
+        {
+            var profile = await repo.GetByIdAsync(id);
+            if (profile is null) return Results.NotFound();
+
+            var concepts = profile.ConceptMasteries
+                .OrderByDescending(c => c.Level)
+                .ThenByDescending(c => c.LastSeenAt)
+                .ToList();
+
+            return Results.Ok(new ConceptMasteriesResponse(concepts));
+        });
     }
 }
 
@@ -43,3 +56,5 @@ public record ProfileStatsResponse(
     int StreakDays,
     int TotalMessages,
     List<Lektio.Api.Models.ConceptMastery> ConceptMasteries);
+
+public record ConceptMasteriesResponse(List<Lektio.Api.Models.ConceptMastery> Concepts);

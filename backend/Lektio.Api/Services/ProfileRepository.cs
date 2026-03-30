@@ -3,6 +3,8 @@ using Lektio.Api.Models;
 using MongoDB.Driver;
 using MongoDB.Driver.Linq;
 
+
+
 namespace Lektio.Api.Services;
 
 public class ProfileRepository : IProfileRepository
@@ -50,5 +52,39 @@ public class ProfileRepository : IProfileRepository
             update = update.Set(p => p.StreakDays, newStreakDays);
 
         await _collection.UpdateOneAsync(p => p.Id == profileId, update, cancellationToken: ct);
+    }
+
+    public async Task UpsertConceptMasteriesAsync(string profileId, IEnumerable<string> concepts, CancellationToken ct)
+    {
+        var profile = await _collection.Find(p => p.Id == profileId).FirstOrDefaultAsync(ct);
+        if (profile is null) return;
+
+        var now = DateTime.UtcNow;
+        foreach (var concept in concepts)
+        {
+            var normalised = concept.Trim().ToLowerInvariant();
+            if (string.IsNullOrWhiteSpace(normalised)) continue;
+
+            var existing = profile.ConceptMasteries
+                .FirstOrDefault(c => c.Concept.Equals(normalised, StringComparison.OrdinalIgnoreCase));
+
+            if (existing is null)
+            {
+                profile.ConceptMasteries.Add(new ConceptMastery
+                {
+                    Concept = normalised,
+                    Level = 1,
+                    LastSeenAt = now
+                });
+            }
+            else
+            {
+                existing.Level = Math.Min(existing.Level + 1, 5);
+                existing.LastSeenAt = now;
+            }
+        }
+
+        profile.UpdatedAt = now;
+        await _collection.ReplaceOneAsync(p => p.Id == profileId, profile, cancellationToken: ct);
     }
 }

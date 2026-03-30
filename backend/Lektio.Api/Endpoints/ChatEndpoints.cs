@@ -27,6 +27,7 @@ public static class ChatEndpoints
         IConversationRepository conversations,
         IProfileRepository profiles,
         IStreakService streakService,
+        IConceptService conceptService,
         HttpContext ctx,
         ILogger<ChatHandler> logger,
         CancellationToken ct)
@@ -126,6 +127,19 @@ public static class ChatEndpoints
 
             // Update streak
             await streakService.UpdateStreakAsync(req.ProfileId, ct);
+
+            // Fire-and-forget concept extraction (non-blocking)
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    await conceptService.ExtractAndUpdateAsync(req.ProfileId, chatResponse.Text, CancellationToken.None);
+                }
+                catch (Exception ex)
+                {
+                    logger.LogWarning(ex, "Background concept extraction failed for profile {ProfileId}", req.ProfileId);
+                }
+            }, CancellationToken.None);
 
             // Send done event
             var doneEvent = new SseEvent { Type = "done", Response = chatResponse };

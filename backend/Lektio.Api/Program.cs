@@ -34,6 +34,7 @@ builder.Services.AddScoped<IClaudeService, ClaudeService>();
 builder.Services.AddScoped<IImageAnalysisService, ImageAnalysisService>();
 builder.Services.AddScoped<ITtsService, ElevenLabsTtsService>();
 builder.Services.AddScoped<IExamService, ExamService>();
+builder.Services.AddScoped<IConceptService, ConceptService>();
 
 // JSON options – camelCase for frontend compatibility
 builder.Services.ConfigureHttpJsonOptions(options =>
