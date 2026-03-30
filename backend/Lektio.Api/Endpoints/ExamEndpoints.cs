@@ -7,7 +7,7 @@ public static class ExamEndpoints
 {
     public static void MapExamEndpoints(this WebApplication app)
     {
-        app.MapPost("/api/exam/generate", async (
+        app.MapPost("/api/exams/generate", async (
             GenerateExamRequest req,
             IExamService examService,
             IExamRepository examRepo,
@@ -17,6 +17,8 @@ public static class ExamEndpoints
                 return Results.BadRequest("ProfileId and Topic are required.");
 
             var questionCount = req.QuestionCount ?? 5;
+            if (questionCount is < 1 or > 20)
+                return Results.BadRequest("QuestionCount must be between 1 and 20.");
 
             Exam exam;
             try
@@ -27,12 +29,25 @@ public static class ExamEndpoints
             {
                 return Results.Problem(ex.Message, statusCode: 502);
             }
+            catch (HttpRequestException ex)
+            {
+                return Results.Problem($"Claude API error: {ex.Message}", statusCode: 502);
+            }
 
             var saved = await examRepo.SaveAsync(exam, ct);
-            return Results.Created($"/api/exam/{saved.ProfileId}", saved);
+            return Results.Created($"/api/exams/{saved.Id}", saved);
         });
 
-        app.MapGet("/api/exam/{profileId}", async (
+        app.MapGet("/api/exams/{examId}", async (
+            string examId,
+            IExamRepository examRepo,
+            CancellationToken ct) =>
+        {
+            var exam = await examRepo.GetByIdAsync(examId, ct);
+            return exam is null ? Results.NotFound() : Results.Ok(exam);
+        });
+
+        app.MapGet("/api/profiles/{profileId}/exams", async (
             string profileId,
             IExamRepository examRepo,
             CancellationToken ct) =>
@@ -41,7 +56,7 @@ public static class ExamEndpoints
             return Results.Ok(exams);
         });
 
-        app.MapPost("/api/exam/{examId}/submit", async (
+        app.MapPost("/api/exams/{examId}/submit", async (
             string examId,
             SubmitExamRequest req,
             IExamRepository examRepo,
@@ -58,12 +73,9 @@ public static class ExamEndpoints
             if (req.Answers.Count != exam.Questions.Count)
                 return Results.BadRequest("Number of answers must match number of questions.");
 
-            var score = 0;
-            for (var i = 0; i < exam.Questions.Count; i++)
-            {
-                if (req.Answers[i] == exam.Questions[i].CorrectIndex)
-                    score++;
-            }
+            var score = exam.Questions
+                .Where((q, i) => req.Answers[i] == q.CorrectIndex)
+                .Count();
 
             var result = new ExamResult
             {
@@ -76,9 +88,7 @@ public static class ExamEndpoints
             };
 
             var saved = await resultRepo.SaveAsync(result, ct);
-
-            return Results.Ok(new
-            {
+            return Results.Ok(new ExamSubmitResponse(
                 saved.Id,
                 saved.ExamId,
                 saved.ProfileId,
@@ -86,11 +96,10 @@ public static class ExamEndpoints
                 saved.Score,
                 saved.Total,
                 saved.CompletedAt,
-                Exam = exam
-            });
+                exam));
         });
 
-        app.MapGet("/api/exam/{profileId}/results", async (
+        app.MapGet("/api/profiles/{profileId}/exam-results", async (
             string profileId,
             IExamResultRepository resultRepo,
             CancellationToken ct) =>
@@ -102,5 +111,13 @@ public static class ExamEndpoints
 }
 
 public record GenerateExamRequest(string ProfileId, string Topic, int? QuestionCount);
-
 public record SubmitExamRequest(string ProfileId, List<int> Answers);
+public record ExamSubmitResponse(
+    string Id,
+    string ExamId,
+    string ProfileId,
+    List<int> Answers,
+    int Score,
+    int Total,
+    DateTime CompletedAt,
+    Exam Exam);

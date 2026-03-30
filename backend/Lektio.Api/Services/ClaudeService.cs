@@ -164,9 +164,15 @@ public class ClaudeService : IClaudeService
 
         var responseJson = await response.Content.ReadAsStringAsync(cancellationToken);
         using var doc = JsonDocument.Parse(responseJson);
-        return doc.RootElement
-            .GetProperty("content")[0]
-            .GetProperty("text")
-            .GetString() ?? string.Empty;
+        if (doc.RootElement.TryGetProperty("content", out var contentElement)
+            && contentElement.ValueKind == JsonValueKind.Array
+            && contentElement.GetArrayLength() > 0
+            && contentElement[0].TryGetProperty("text", out var textElement)
+            && textElement.ValueKind == JsonValueKind.String)
+        {
+            return textElement.GetString() ?? string.Empty;
+        }
+
+        return string.Empty;
     }
 }

@@ -7,7 +7,7 @@ export async function generateExam(
   topic: string,
   questionCount = 5,
 ): Promise<Exam> {
-  const res = await fetch(`${BASE_URL}/api/exam/generate`, {
+  const res = await fetch(`${BASE_URL}/api/exams/generate`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ profileId, topic, questionCount }),
@@ -21,7 +21,7 @@ export async function submitExam(
   profileId: string,
   answers: number[],
 ): Promise<ExamResult & { exam: Exam }> {
-  const res = await fetch(`${BASE_URL}/api/exam/${examId}/submit`, {
+  const res = await fetch(`${BASE_URL}/api/exams/${examId}/submit`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ profileId, answers }),
@@ -31,7 +31,7 @@ export async function submitExam(
 }
 
 export async function fetchExams(profileId: string): Promise<Exam[]> {
-  const res = await fetch(`${BASE_URL}/api/exam/${profileId}`);
+  const res = await fetch(`${BASE_URL}/api/profiles/${profileId}/exams`);
   if (!res.ok) throw new Error("Failed to fetch exams");
   return res.json();
 }

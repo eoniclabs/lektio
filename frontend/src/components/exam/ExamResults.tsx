@@ -10,7 +10,9 @@ interface ExamResultsProps {
 export function ExamResults({ result, onReset }: ExamResultsProps) {
   const scoreRef = useRef<HTMLSpanElement>(null);
   const percentageRef = useRef<HTMLSpanElement>(null);
-  const percentage = Math.round((result.score / result.total) * 100);
+  const percentage = result.total > 0
+    ? Math.round((result.score / result.total) * 100)
+    : 0;
 
   const scoreColor =
     percentage >= 70 ? "text-green-500" : percentage >= 50 ? "text-orange-400" : "text-red-500";

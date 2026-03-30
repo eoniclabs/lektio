@@ -22,9 +22,11 @@ export function ExamQuiz({ exam, onSubmit }: ExamQuizProps) {
     setAnswers(updated);
   };
 
+  const allAnswered = answers.every((a) => a !== null);
+
   const handleNext = () => {
     if (isLast) {
-      onSubmit(answers.map((a) => a ?? 0));
+      onSubmit(answers.map((a) => a!));
     } else {
       setCurrentIndex((i) => i + 1);
     }
@@ -89,7 +91,7 @@ export function ExamQuiz({ exam, onSubmit }: ExamQuizProps) {
         </button>
         <button
           onClick={handleNext}
-          disabled={selectedAnswer === null}
+          disabled={isLast ? !allAnswered : selectedAnswer === null}
           className="flex-1 py-3 rounded-xl bg-[#2B9DB0] text-white text-sm font-semibold disabled:opacity-40 disabled:cursor-not-allowed transition-opacity"
         >
           {isLast ? "Lämna in" : "Nästa"}

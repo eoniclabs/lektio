@@ -37,10 +37,20 @@ public class ExamService : IExamService
 
         var raw = await _claudeService.AskAsync(systemPrompt, userMessage, ct);
 
+        // Strip markdown fences in case Claude wraps the JSON despite instructions
+        var cleaned = raw.Trim();
+        if (cleaned.StartsWith("```"))
+        {
+            var firstNewline = cleaned.IndexOf('\n');
+            var lastFence = cleaned.LastIndexOf("```");
+            if (firstNewline > 0 && lastFence > firstNewline)
+                cleaned = cleaned[(firstNewline + 1)..lastFence].Trim();
+        }
+
         List<ExamQuestion> questions;
         try
         {
-            questions = JsonSerializer.Deserialize<List<ExamQuestion>>(raw, JsonOptions)
+            questions = JsonSerializer.Deserialize<List<ExamQuestion>>(cleaned, JsonOptions)
                 ?? throw new InvalidOperationException("Deserialized result was null.");
         }
         catch (Exception ex)
