@@ -121,4 +121,58 @@ public class ClaudeService : IClaudeService
             }
         }
     }
+
+    public async Task<string> AskAsync(
+        string systemPrompt,
+        string userMessage,
+        CancellationToken cancellationToken = default)
+    {
+        var apiKey = _configuration["Claude:ApiKey"]
+            ?? throw new InvalidOperationException("Claude:ApiKey is not configured.");
+        var model = _configuration["Claude:Model"] ?? "claude-opus-4-5";
+
+        var requestBody = new
+        {
+            model,
+            max_tokens = 4096,
+            system = systemPrompt,
+            messages = new[]
+            {
+                new { role = "user", content = userMessage }
+            }
+        };
+
+        var json = JsonSerializer.Serialize(requestBody);
+        using var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+        var client = _httpClientFactory.CreateClient("claude");
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/v1/messages")
+        {
+            Content = content
+        };
+        request.Headers.Add("x-api-key", apiKey);
+        request.Headers.Add("anthropic-version", "2023-06-01");
+
+        using var response = await client.SendAsync(request, cancellationToken);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            var error = await response.Content.ReadAsStringAsync(cancellationToken);
+            _logger.LogError("Claude API error {Status}: {Error}", response.StatusCode, error);
+            throw new HttpRequestException($"Claude API returned {response.StatusCode}");
+        }
+
+        var responseJson = await response.Content.ReadAsStringAsync(cancellationToken);
+        using var doc = JsonDocument.Parse(responseJson);
+        if (doc.RootElement.TryGetProperty("content", out var contentElement)
+            && contentElement.ValueKind == JsonValueKind.Array
+            && contentElement.GetArrayLength() > 0
+            && contentElement[0].TryGetProperty("text", out var textElement)
+            && textElement.ValueKind == JsonValueKind.String)
+        {
+            return textElement.GetString() ?? string.Empty;
+        }
+
+        return string.Empty;
+    }
 }

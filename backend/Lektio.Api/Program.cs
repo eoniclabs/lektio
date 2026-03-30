@@ -12,6 +12,8 @@ builder.Services.AddSingleton<IProfileRepository, ProfileRepository>();
 builder.Services.AddSingleton<IConversationRepository, ConversationRepository>();
 builder.Services.AddSingleton<INotebookRepository, NotebookRepository>();
 builder.Services.AddSingleton<IStreakService, StreakService>();
+builder.Services.AddSingleton<IExamRepository, ExamRepository>();
+builder.Services.AddSingleton<IExamResultRepository, ExamResultRepository>();
 
 // Claude HTTP client
 builder.Services.AddHttpClient("claude", client =>
@@ -31,6 +33,7 @@ builder.Services.AddHttpClient("elevenlabs", client =>
 builder.Services.AddScoped<IClaudeService, ClaudeService>();
 builder.Services.AddScoped<IImageAnalysisService, ImageAnalysisService>();
 builder.Services.AddScoped<ITtsService, ElevenLabsTtsService>();
+builder.Services.AddScoped<IExamService, ExamService>();
 
 // JSON options – camelCase for frontend compatibility
 builder.Services.ConfigureHttpJsonOptions(options =>
@@ -63,5 +66,6 @@ app.MapChatEndpoints();
 app.MapImageEndpoints();
 app.MapTtsEndpoints();
 app.MapNotebookEndpoints();
+app.MapExamEndpoints();
 
 app.Run();

@@ -5,6 +5,7 @@ import { ChatInput } from "../components/chat/ChatInput";
 import { CameraOverlay } from "../components/camera/CameraOverlay";
 import { ImagePreview } from "../components/camera/ImagePreview";
 import { NotebookPage } from "../components/notebook/NotebookPage";
+import { ExamPage } from "../components/exam/ExamPage";
 import { StreakBadge } from "../components/profile/StreakBadge";
 import { useOnboarding } from "../hooks/useOnboarding";
 import { useChat } from "../hooks/useChat";
@@ -22,6 +23,7 @@ export function ChatPage() {
   const { speak: speakNarration } = useTts();
   const prevLoadingRef = useRef(isLoading);
   const [showNotebook, setShowNotebook] = useState(false);
+  const [showExam, setShowExam] = useState(false);
   const [profileStats, setProfileStats] = useState<ProfileStats | null>(null);
   const notebook = useNotebook(profileId ?? "");
 
@@ -95,6 +97,13 @@ export function ChatPage() {
         <div className="flex items-center gap-2">
           <StreakBadge streakDays={profileStats?.streakDays ?? 0} />
           <button
+            onClick={() => setShowExam(true)}
+            className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 transition-colors text-lg"
+            title="Examensprov"
+          >
+            📝
+          </button>
+          <button
             onClick={() => setShowNotebook(true)}
             className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 transition-colors text-lg"
             title="Anteckningsbok"
@@ -151,6 +160,14 @@ export function ChatPage() {
         <NotebookPage
           profileId={profileId}
           onClose={() => setShowNotebook(false)}
+        />
+      )}
+
+      {/* Exam overlay */}
+      {showExam && profileId && (
+        <ExamPage
+          profileId={profileId}
+          onClose={() => setShowExam(false)}
         />
       )}
 

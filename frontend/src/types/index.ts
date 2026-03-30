@@ -77,3 +77,28 @@ export interface ProfileStats {
   totalMessages: number;
   conceptMasteries: Array<{ concept: string; level: number; lastSeenAt: string }>;
 }
+
+export interface ExamQuestion {
+  question: string;
+  options: string[];
+  correctIndex: number;
+  explanation: string;
+}
+
+export interface Exam {
+  id: string;
+  profileId: string;
+  topic: string;
+  questions: ExamQuestion[];
+  createdAt: string;
+}
+
+export interface ExamResult {
+  id: string;
+  examId: string;
+  profileId: string;
+  answers: number[];
+  score: number;
+  total: number;
+  completedAt: string;
+}
