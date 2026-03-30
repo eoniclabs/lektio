@@ -7,6 +7,7 @@ import { ImagePreview } from "../components/camera/ImagePreview";
 import { NotebookPage } from "../components/notebook/NotebookPage";
 import { ExamPage } from "../components/exam/ExamPage";
 import { StreakBadge } from "../components/profile/StreakBadge";
+import { ConceptMasteryPage } from "../components/profile/ConceptMasteryPage";
 import { useOnboarding } from "../hooks/useOnboarding";
 import { useChat } from "../hooks/useChat";
 import { useSpeech } from "../hooks/useSpeech";
@@ -24,6 +25,7 @@ export function ChatPage() {
   const prevLoadingRef = useRef(isLoading);
   const [showNotebook, setShowNotebook] = useState(false);
   const [showExam, setShowExam] = useState(false);
+  const [showConcepts, setShowConcepts] = useState(false);
   const [profileStats, setProfileStats] = useState<ProfileStats | null>(null);
   const notebook = useNotebook(profileId ?? "");
 
@@ -97,6 +99,13 @@ export function ChatPage() {
         <div className="flex items-center gap-2">
           <StreakBadge streakDays={profileStats?.streakDays ?? 0} />
           <button
+            onClick={() => setShowConcepts(true)}
+            className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 transition-colors text-lg"
+            title="Mina begrepp"
+          >
+            🧠
+          </button>
+          <button
             onClick={() => setShowExam(true)}
             className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 transition-colors text-lg"
             title="Examensprov"
@@ -168,6 +177,14 @@ export function ChatPage() {
         <ExamPage
           profileId={profileId}
           onClose={() => setShowExam(false)}
+        />
+      )}
+
+      {/* Concept mastery overlay */}
+      {showConcepts && profileId && (
+        <ConceptMasteryPage
+          profileId={profileId}
+          onClose={() => setShowConcepts(false)}
         />
       )}
 

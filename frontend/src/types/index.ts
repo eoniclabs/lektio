@@ -102,3 +102,9 @@ export interface ExamResult {
   total: number;
   completedAt: string;
 }
+
+export interface ConceptMastery {
+  concept: string;
+  level: number;
+  lastSeenAt: string;
+}
