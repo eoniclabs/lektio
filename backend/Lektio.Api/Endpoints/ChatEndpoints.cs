@@ -23,7 +23,7 @@ public static class ChatEndpoints
 
     private static async Task HandleChatAsync(
         ChatRequest req,
-        IClaudeService claude,
+        IAiService ai,
         IConversationRepository conversations,
         IProfileRepository profiles,
         IStreakService streakService,
@@ -70,7 +70,7 @@ public static class ChatEndpoints
 
         try
         {
-            await claude.StreamChatAsync(
+            await ai.StreamChatAsync(
                 profile,
                 history,
                 req.Message,

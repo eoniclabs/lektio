@@ -5,7 +5,7 @@ namespace Lektio.Api.Services;
 
 public class ConceptService : IConceptService
 {
-    private readonly IClaudeService _claudeService;
+    private readonly IAiService _aiService;
     private readonly IProfileRepository _profileRepository;
     private readonly ILogger<ConceptService> _logger;
 
@@ -23,11 +23,11 @@ public class ConceptService : IConceptService
         """;
 
     public ConceptService(
-        IClaudeService claudeService,
+        IAiService claudeService,
         IProfileRepository profileRepository,
         ILogger<ConceptService> logger)
     {
-        _claudeService = claudeService;
+        _aiService = claudeService;
         _profileRepository = profileRepository;
         _logger = logger;
     }
@@ -42,7 +42,7 @@ public class ConceptService : IConceptService
         string raw;
         try
         {
-            raw = await _claudeService.AskAsync(SystemPrompt, truncated, ct);
+            raw = await _aiService.AskAsync(SystemPrompt, truncated, ct);
         }
         catch (Exception ex)
         {

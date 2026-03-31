@@ -15,10 +15,15 @@ builder.Services.AddSingleton<IStreakService, StreakService>();
 builder.Services.AddSingleton<IExamRepository, ExamRepository>();
 builder.Services.AddSingleton<IExamResultRepository, ExamResultRepository>();
 
-// Claude HTTP client
+// AI provider HTTP clients
 builder.Services.AddHttpClient("claude", client =>
 {
     client.BaseAddress = new Uri("https://api.anthropic.com");
+    client.Timeout = TimeSpan.FromSeconds(120);
+});
+builder.Services.AddHttpClient("openai", client =>
+{
+    client.BaseAddress = new Uri("https://api.openai.com");
     client.Timeout = TimeSpan.FromSeconds(120);
 });
 
@@ -29,8 +34,13 @@ builder.Services.AddHttpClient("elevenlabs", client =>
     client.Timeout = TimeSpan.FromSeconds(30);
 });
 
-// Claude service (scoped – uses IHttpClientFactory)
-builder.Services.AddScoped<IClaudeService, ClaudeService>();
+// AI service — provider selected via Ai:Provider config ("Claude" or "OpenAI")
+var aiProvider = builder.Configuration["Ai:Provider"] ?? "Claude";
+if (aiProvider.Equals("OpenAI", StringComparison.OrdinalIgnoreCase))
+    builder.Services.AddScoped<IAiService, OpenAiService>();
+else
+    builder.Services.AddScoped<IAiService, ClaudeService>();
+
 builder.Services.AddScoped<IImageAnalysisService, ImageAnalysisService>();
 builder.Services.AddScoped<ITtsService, ElevenLabsTtsService>();
 builder.Services.AddScoped<IExamService, ExamService>();

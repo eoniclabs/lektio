@@ -2,7 +2,7 @@ using Lektio.Api.Models;
 
 namespace Lektio.Api.Services;
 
-public interface IClaudeService
+public interface IAiService
 {
     Task StreamChatAsync(
         StudentProfile profile,
@@ -15,5 +15,12 @@ public interface IClaudeService
     Task<string> AskAsync(
         string systemPrompt,
         string userMessage,
+        CancellationToken cancellationToken = default);
+
+    Task<string> AnalyzeImageAsync(
+        string base64Image,
+        string mediaType,
+        string systemPrompt,
+        string userPrompt,
         CancellationToken cancellationToken = default);
 }

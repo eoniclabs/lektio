@@ -5,21 +5,16 @@ using Lektio.Api.Models;
 
 namespace Lektio.Api.Services;
 
-public class ClaudeService : IAiService
+public class OpenAiService : IAiService
 {
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly IConfiguration _configuration;
-    private readonly ILogger<ClaudeService> _logger;
+    private readonly ILogger<OpenAiService> _logger;
 
-    private static readonly JsonSerializerOptions JsonOptions = new()
-    {
-        PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower
-    };
-
-    public ClaudeService(
+    public OpenAiService(
         IHttpClientFactory httpClientFactory,
         IConfiguration configuration,
-        ILogger<ClaudeService> logger)
+        ILogger<OpenAiService> logger)
     {
         _httpClientFactory = httpClientFactory;
         _configuration = configuration;
@@ -40,18 +35,19 @@ public class ClaudeService : IAiService
             ? $"[Sidinnehåll från foto:]\n{imageContext}\n\n[Elevens fråga:]\n{userMessage}"
             : userMessage;
 
-        var messages = history
-            .Select(m => new { role = m.Role, content = m.Content })
-            .Append(new { role = "user", content = effectiveMessage })
-            .ToList<object>();
-
         var systemPrompt = SystemPromptBuilder.Build(profile);
+
+        var messages = new List<object>
+        {
+            new { role = "system", content = systemPrompt }
+        };
+        messages.AddRange(history.Select(m => (object)new { role = m.Role, content = m.Content }));
+        messages.Add(new { role = "user", content = effectiveMessage });
 
         var requestBody = new
         {
             model,
             max_tokens = 2048,
-            system = systemPrompt,
             messages,
             stream = true
         };
@@ -59,14 +55,12 @@ public class ClaudeService : IAiService
         var json = JsonSerializer.Serialize(requestBody);
         using var content = new StringContent(json, Encoding.UTF8, "application/json");
 
-        var client = _httpClientFactory.CreateClient("claude");
-        using var request = new HttpRequestMessage(HttpMethod.Post, "/v1/messages")
+        var client = _httpClientFactory.CreateClient("openai");
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/v1/chat/completions")
         {
             Content = content
         };
-        request.Headers.Add("x-api-key", apiKey);
-        request.Headers.Add("anthropic-version", "2023-06-01");
-        request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("text/event-stream"));
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
 
         using var response = await client.SendAsync(
             request,
@@ -76,8 +70,8 @@ public class ClaudeService : IAiService
         if (!response.IsSuccessStatusCode)
         {
             var error = await response.Content.ReadAsStringAsync(cancellationToken);
-            _logger.LogError("Claude API error {Status}: {Error}", response.StatusCode, error);
-            throw new HttpRequestException($"Claude API returned {response.StatusCode}");
+            _logger.LogError("OpenAI API error {Status}: {Error}", response.StatusCode, error);
+            throw new HttpRequestException($"OpenAI API returned {response.StatusCode}");
         }
 
         await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
@@ -96,23 +90,21 @@ public class ClaudeService : IAiService
             try
             {
                 using var doc = JsonDocument.Parse(data);
-                var root = doc.RootElement;
-                var type = root.GetProperty("type").GetString();
+                var choices = doc.RootElement.GetProperty("choices");
+                if (choices.GetArrayLength() == 0) continue;
 
-                if (type == "content_block_delta")
+                var delta = choices[0].GetProperty("delta");
+                if (delta.TryGetProperty("content", out var contentToken)
+                    && contentToken.ValueKind == JsonValueKind.String)
                 {
-                    var delta = root.GetProperty("delta");
-                    if (delta.GetProperty("type").GetString() == "text_delta")
-                    {
-                        var token = delta.GetProperty("text").GetString() ?? string.Empty;
-                        if (!string.IsNullOrEmpty(token))
-                            await onDelta(token);
-                    }
+                    var token = contentToken.GetString() ?? string.Empty;
+                    if (!string.IsNullOrEmpty(token))
+                        await onDelta(token);
                 }
             }
             catch (JsonException ex)
             {
-                _logger.LogWarning(ex, "Failed to parse SSE line: {Line}", line);
+                _logger.LogWarning(ex, "Failed to parse OpenAI SSE line: {Line}", line);
             }
         }
     }
@@ -128,9 +120,9 @@ public class ClaudeService : IAiService
         {
             model,
             max_tokens = 4096,
-            system = systemPrompt,
-            messages = new[]
+            messages = new object[]
             {
+                new { role = "system", content = systemPrompt },
                 new { role = "user", content = userMessage }
             }
         };
@@ -138,21 +130,20 @@ public class ClaudeService : IAiService
         var json = JsonSerializer.Serialize(requestBody);
         using var content = new StringContent(json, Encoding.UTF8, "application/json");
 
-        var client = _httpClientFactory.CreateClient("claude");
-        using var request = new HttpRequestMessage(HttpMethod.Post, "/v1/messages")
+        var client = _httpClientFactory.CreateClient("openai");
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/v1/chat/completions")
         {
             Content = content
         };
-        request.Headers.Add("x-api-key", apiKey);
-        request.Headers.Add("anthropic-version", "2023-06-01");
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
 
         using var response = await client.SendAsync(request, cancellationToken);
 
         if (!response.IsSuccessStatusCode)
         {
             var error = await response.Content.ReadAsStringAsync(cancellationToken);
-            _logger.LogError("Claude API error {Status}: {Error}", response.StatusCode, error);
-            throw new HttpRequestException($"Claude API returned {response.StatusCode}");
+            _logger.LogError("OpenAI API error {Status}: {Error}", response.StatusCode, error);
+            throw new HttpRequestException($"OpenAI API returned {response.StatusCode}");
         }
 
         return await ExtractTextAsync(response, cancellationToken);
@@ -167,13 +158,15 @@ public class ClaudeService : IAiService
     {
         var (apiKey, model) = GetConfig();
 
+        var dataUri = $"data:{mediaType};base64,{base64Image}";
+
         var requestBody = new
         {
             model,
             max_tokens = 4096,
-            system = systemPrompt,
-            messages = new[]
+            messages = new object[]
             {
+                new { role = "system", content = systemPrompt },
                 new
                 {
                     role = "user",
@@ -181,13 +174,8 @@ public class ClaudeService : IAiService
                     {
                         new
                         {
-                            type = "image",
-                            source = new
-                            {
-                                type = "base64",
-                                media_type = mediaType,
-                                data = base64Image
-                            }
+                            type = "image_url",
+                            image_url = new { url = dataUri }
                         },
                         new
                         {
@@ -199,24 +187,23 @@ public class ClaudeService : IAiService
             }
         };
 
-        var json = JsonSerializer.Serialize(requestBody, JsonOptions);
+        var json = JsonSerializer.Serialize(requestBody);
         using var content = new StringContent(json, Encoding.UTF8, "application/json");
 
-        var client = _httpClientFactory.CreateClient("claude");
-        using var request = new HttpRequestMessage(HttpMethod.Post, "/v1/messages")
+        var client = _httpClientFactory.CreateClient("openai");
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/v1/chat/completions")
         {
             Content = content
         };
-        request.Headers.Add("x-api-key", apiKey);
-        request.Headers.Add("anthropic-version", "2023-06-01");
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
 
         using var response = await client.SendAsync(request, cancellationToken);
 
         if (!response.IsSuccessStatusCode)
         {
             var error = await response.Content.ReadAsStringAsync(cancellationToken);
-            _logger.LogError("Claude Vision API error {Status}: {Error}", response.StatusCode, error);
-            throw new HttpRequestException($"Claude Vision API returned {response.StatusCode}");
+            _logger.LogError("OpenAI Vision API error {Status}: {Error}", response.StatusCode, error);
+            throw new HttpRequestException($"OpenAI Vision API returned {response.StatusCode}");
         }
 
         return await ExtractTextAsync(response, cancellationToken);
@@ -224,9 +211,9 @@ public class ClaudeService : IAiService
 
     private (string ApiKey, string Model) GetConfig()
     {
-        var apiKey = _configuration["Claude:ApiKey"]
-            ?? throw new InvalidOperationException("Claude:ApiKey is not configured.");
-        var model = _configuration["Claude:Model"] ?? "claude-opus-4-5";
+        var apiKey = _configuration["OpenAI:ApiKey"]
+            ?? throw new InvalidOperationException("OpenAI:ApiKey is not configured.");
+        var model = _configuration["OpenAI:Model"] ?? "gpt-4o";
         return (apiKey, model);
     }
 
@@ -234,13 +221,14 @@ public class ClaudeService : IAiService
     {
         var responseJson = await response.Content.ReadAsStringAsync(ct);
         using var doc = JsonDocument.Parse(responseJson);
-        if (doc.RootElement.TryGetProperty("content", out var contentElement)
-            && contentElement.ValueKind == JsonValueKind.Array
-            && contentElement.GetArrayLength() > 0
-            && contentElement[0].TryGetProperty("text", out var textElement)
-            && textElement.ValueKind == JsonValueKind.String)
+        if (doc.RootElement.TryGetProperty("choices", out var choices)
+            && choices.ValueKind == JsonValueKind.Array
+            && choices.GetArrayLength() > 0
+            && choices[0].TryGetProperty("message", out var message)
+            && message.TryGetProperty("content", out var contentEl)
+            && contentEl.ValueKind == JsonValueKind.String)
         {
-            return textElement.GetString() ?? string.Empty;
+            return contentEl.GetString() ?? string.Empty;
         }
 
         return string.Empty;
