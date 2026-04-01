@@ -9,9 +9,14 @@ public class Conversation
     [BsonRepresentation(BsonType.ObjectId)]
     public string Id { get; set; } = null!;
 
-    public string ProfileId { get; set; } = null!;
+    [BsonRepresentation(BsonType.ObjectId)]
+    public string ProfileId { get; set; } = string.Empty;
+
+    public string Title { get; set; } = string.Empty;
 
     public List<ConversationMessage> Messages { get; set; } = [];
+
+    public int MessageCount { get; set; }
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
@@ -20,9 +25,26 @@ public class Conversation
 
 public class ConversationMessage
 {
-    public string Role { get; set; } = null!;
+    public string Role { get; set; } = string.Empty;
 
-    public string Content { get; set; } = null!;
+    public string Content { get; set; } = string.Empty;
 
-    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public string? ImageUrl { get; set; }
+
+    public DateTime Timestamp { get; set; } = DateTime.UtcNow;
+}
+
+public class ConversationSummary
+{
+    public string Id { get; set; } = null!;
+
+    public string ProfileId { get; set; } = string.Empty;
+
+    public string Title { get; set; } = string.Empty;
+
+    public int MessageCount { get; set; }
+
+    public DateTime CreatedAt { get; set; }
+
+    public DateTime UpdatedAt { get; set; }
 }

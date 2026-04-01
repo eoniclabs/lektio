@@ -1,13 +1,16 @@
-using Lektio.Api.Endpoints;
+using System.Text;
 using Lektio.Api.Infrastructure;
+using Lektio.Api.Endpoints;
 using Lektio.Api.Services;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // MongoDB
 builder.Services.AddSingleton<MongoDbContext>();
 
-// Repositories (singleton – stateless, hold collection references)
+// Repositories (singleton -- stateless, hold collection references)
 builder.Services.AddSingleton<IProfileRepository, ProfileRepository>();
 builder.Services.AddSingleton<IConversationRepository, ConversationRepository>();
 builder.Services.AddSingleton<INotebookRepository, NotebookRepository>();
@@ -34,7 +37,7 @@ builder.Services.AddHttpClient("elevenlabs", client =>
     client.Timeout = TimeSpan.FromSeconds(30);
 });
 
-// AI service — provider selected via Ai:Provider config ("Claude" or "OpenAI")
+// AI service -- provider selected via Ai:Provider config ("Claude" or "OpenAI")
 var aiProvider = builder.Configuration["Ai:Provider"] ?? "Claude";
 if (aiProvider.Equals("OpenAI", StringComparison.OrdinalIgnoreCase))
     builder.Services.AddScoped<IAiService, OpenAiService>();
@@ -46,7 +49,26 @@ builder.Services.AddScoped<ITtsService, ElevenLabsTtsService>();
 builder.Services.AddScoped<IExamService, ExamService>();
 builder.Services.AddScoped<IConceptService, ConceptService>();
 
-// JSON options – camelCase for frontend compatibility
+// JWT authentication
+var jwtSecret = builder.Configuration["Jwt:Secret"]
+    ?? throw new InvalidOperationException("Jwt:Secret not configured");
+
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidIssuer = builder.Configuration["Jwt:Issuer"] ?? "Lektio",
+            ValidateAudience = false,
+            ValidateLifetime = true,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecret))
+        };
+    });
+builder.Services.AddAuthorization();
+builder.Services.AddSingleton<JwtService>();
+
+// JSON options -- camelCase for frontend compatibility
 builder.Services.ConfigureHttpJsonOptions(options =>
 {
     options.SerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
@@ -69,14 +91,18 @@ builder.Services.AddCors(options =>
 var app = builder.Build();
 
 app.UseCors();
+app.UseAuthentication();
+app.UseAuthorization();
 
 // Endpoints
 app.MapHealthEndpoints();
+app.MapAuthEndpoints();
 app.MapProfileEndpoints();
 app.MapChatEndpoints();
 app.MapImageEndpoints();
 app.MapTtsEndpoints();
 app.MapNotebookEndpoints();
 app.MapExamEndpoints();
+app.MapConversationEndpoints();
 
 app.Run();

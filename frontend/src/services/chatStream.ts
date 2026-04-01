@@ -1,3 +1,4 @@
+import { useAuthStore } from "../stores/auth";
 import type { ChatRequest, ChatResponse } from "../types";
 
 export interface StreamCallbacks {
@@ -12,12 +13,22 @@ export async function sendChatMessage(
   signal?: AbortSignal,
 ): Promise<void> {
   const BASE_URL = import.meta.env.VITE_API_URL ?? "http://localhost:5000";
+  const token = useAuthStore.getState().token;
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+
   const response = await fetch(`${BASE_URL}/api/chat`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers,
     body: JSON.stringify(request),
     signal,
   });
+
+  if (response.status === 401) {
+    useAuthStore.getState().logout();
+    callbacks.onError("Unauthorized");
+    return;
+  }
 
   if (!response.ok) {
     callbacks.onError(`API error: ${response.status}`);
@@ -68,7 +79,7 @@ export async function sendChatMessage(
             callbacks.onError(event.error ?? "Unknown error");
           }
         } catch {
-          // Malformed SSE line – skip
+          // Malformed SSE line -- skip
         }
       }
     }

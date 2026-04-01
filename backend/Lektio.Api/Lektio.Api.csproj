@@ -4,10 +4,12 @@
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <UserSecretsId>95831aa7-fe30-4fbf-9f89-f158e1f1a40e</UserSecretsId>
+    <UserSecretsId>91e04276-56e8-4c95-b4a3-5bcfd196fa6e</UserSecretsId>
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="BCrypt.Net-Next" Version="4.1.0" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.5" />
     <PackageReference Include="MongoDB.Driver" Version="3.7.1" />
   </ItemGroup>
 

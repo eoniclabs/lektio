@@ -3,7 +3,7 @@ export interface StudentProfile {
   name: string;
   schoolLevel: SchoolLevel;
   preferences: StudentPreferences;
-  conceptMastery: Record<string, number>;
+  conceptMasteries: ConceptMastery[];
   streakDays: number;
   createdAt: string;
 }
@@ -107,4 +107,17 @@ export interface ConceptMastery {
   concept: string;
   level: number;
   lastSeenAt: string;
+}
+
+export interface ConversationSummary {
+  id: string;
+  title: string;
+  messageCount: number;
+  updatedAt: string;
+}
+
+export interface AuthResponse {
+  token: string;
+  profileId: string;
+  name: string;
 }
