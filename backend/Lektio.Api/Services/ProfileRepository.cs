@@ -12,16 +12,14 @@ public class ProfileRepository : IProfileRepository
     {
         _profiles = db.GetCollection<StudentProfile>("profiles");
 
-        // Create unique index on Email with partial filter to exclude empty strings.
-        // Uses the generic CreateIndexOptions<T> so PartialFilterExpression accepts FilterDefinition<T>.
+        // Create unique index on Email, only for non-empty values.
+        // Atlas partial indexes support $exists/$gt/$gte/$lt/$lte/$type only (not $ne).
         var indexKeys = Builders<StudentProfile>.IndexKeys.Ascending(p => p.Email);
         var indexOptions = new CreateIndexOptions<StudentProfile>
         {
             Unique = true,
-            Name = "email_unique",
-            PartialFilterExpression = Builders<StudentProfile>.Filter.And(
-                Builders<StudentProfile>.Filter.Exists(p => p.Email),
-                Builders<StudentProfile>.Filter.Ne(p => p.Email, ""))
+            Name = "email_unique_gt",
+            PartialFilterExpression = Builders<StudentProfile>.Filter.Gt(p => p.Email, "")
         };
         _profiles.Indexes.CreateOne(new CreateIndexModel<StudentProfile>(indexKeys, indexOptions));
     }
