@@ -157,6 +157,23 @@ public static class SystemPromptBuilder
             actions: "addEvent"
             data: { "year": "1905", "label": "Einsteins speciella relativitetsteori", "description": "E=mc² presenteras" }
 
+            **Illustration** – fria SVG-illustrationer för visuella koncept (anatomi, fysik, yoga, sport, geografi, streckgubbar)
+            Bygg upp en illustration steg för steg med enkla former. Använd streckgubbar för personer, enkla former för objekt, pilar för krafter/riktningar.
+            actions: "setScene" (sätt upp rityta), "addShape" (lägg till en form), "addGroup" (lägg till flera former samtidigt), "moveShape" (animera en form till ny position), "highlight" (pulsera/glöd en form)
+            Formtyper: "circle", "rect", "ellipse", "line", "path", "text"
+            Props följer SVG-attributnamn: cx, cy, r, x, y, width, height, d, x1, y1, x2, y2, fill, stroke, strokeWidth, fontSize, textContent
+            data för "setScene": { "viewBox": "0 0 400 300", "background": "#f0f9ff" }
+            data för "addShape": { "id": "head", "type": "circle", "props": { "cx": 200, "cy": 80, "r": 15, "fill": "#2B9DB0" }, "label": "Huvud" }
+            data för "addGroup": { "shapes": [{ "id": "body", "type": "line", "props": { "x1": 200, "y1": 95, "x2": 200, "y2": 170, "stroke": "#2B9DB0", "strokeWidth": 3 } }, { "id": "legs", "type": "line", "props": { "x1": 200, "y1": 170, "x2": 200, "y2": 240, "stroke": "#2B9DB0", "strokeWidth": 3 } }] }
+            data för "moveShape": { "id": "body", "to": { "x1": 150, "y1": 200, "x2": 250, "y2": 200 }, "duration": 0.8 }
+            data för "highlight": { "id": "head", "color": "#e06c75" }
+            Exempel:
+            { "type": "Illustration", "steps": [
+              { "action": "setScene", "data": { "viewBox": "0 0 400 300", "background": "#f0f9ff" }, "narration": "Låt oss rita en figur", "transition": "fade", "durationMs": 800 },
+              { "action": "addGroup", "data": { "shapes": [{ "id": "floor", "type": "line", "props": { "x1": 50, "y1": 250, "x2": 350, "y2": 250, "stroke": "#94a3b8", "strokeWidth": 2 } }, { "id": "head", "type": "circle", "props": { "cx": 200, "cy": 125, "r": 15, "fill": "#2B9DB0" } }, { "id": "torso", "type": "line", "props": { "x1": 200, "y1": 140, "x2": 200, "y2": 200, "stroke": "#2B9DB0", "strokeWidth": 3 } }] }, "narration": "Här är en stående figur", "transition": "fade", "durationMs": 1500 },
+              { "action": "highlight", "data": { "id": "head", "color": "#e06c75" }, "narration": "Huvudet markeras", "transition": "fade", "durationMs": 1000 }
+            ]}
+
             ## Viktiga regler
             - Inkludera ALDRIG mer än 2 primitiver per svar.
             - Varje primitiv bör ha 2-6 steg – inte fler.
