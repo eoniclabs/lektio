@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { persist } from "zustand/middleware";
 import type { ChatMessage } from "../types";
 
 interface ChatState {
@@ -13,7 +14,9 @@ interface ChatState {
   clearMessages: () => void;
 }
 
-export const useChatStore = create<ChatState>((set) => ({
+export const useChatStore = create<ChatState>()(
+  persist(
+    (set) => ({
   messages: [],
   isLoading: false,
   conversationId: null,
@@ -45,4 +48,13 @@ export const useChatStore = create<ChatState>((set) => ({
   setLoading: (loading) => set({ isLoading: loading }),
   setConversationId: (id) => set({ conversationId: id }),
   clearMessages: () => set({ messages: [], conversationId: null }),
-}));
+    }),
+    {
+      name: "lektio-chat",
+      partialize: (state) => ({
+        messages: state.messages.slice(-50), // Keep last 50 messages
+        conversationId: state.conversationId,
+      }),
+    },
+  ),
+);
