@@ -1,43 +1,56 @@
 using Lektio.Api.Infrastructure;
 using Lektio.Api.Models;
 using MongoDB.Driver;
-using MongoDB.Driver.Linq;
 
 namespace Lektio.Api.Services;
 
 public class ProfileRepository : IProfileRepository
 {
-    private readonly IMongoCollection<StudentProfile> _collection;
+    private readonly IMongoCollection<StudentProfile> _profiles;
 
     public ProfileRepository(MongoDbContext db)
     {
-        _collection = db.GetCollection<StudentProfile>("profiles");
+        _profiles = db.GetCollection<StudentProfile>("profiles");
+
+        // Create unique index on Email with partial filter to exclude empty strings.
+        // Uses the generic CreateIndexOptions<T> so PartialFilterExpression accepts FilterDefinition<T>.
+        var indexKeys = Builders<StudentProfile>.IndexKeys.Ascending(p => p.Email);
+        var indexOptions = new CreateIndexOptions<StudentProfile>
+        {
+            Unique = true,
+            Name = "email_unique",
+            PartialFilterExpression = Builders<StudentProfile>.Filter.And(
+                Builders<StudentProfile>.Filter.Exists(p => p.Email),
+                Builders<StudentProfile>.Filter.Ne(p => p.Email, ""))
+        };
+        _profiles.Indexes.CreateOne(new CreateIndexModel<StudentProfile>(indexKeys, indexOptions));
     }
 
-    public async Task<StudentProfile> CreateAsync(StudentProfile profile)
+    public async Task<StudentProfile> CreateAsync(StudentProfile profile, CancellationToken ct = default)
     {
         profile.CreatedAt = DateTime.UtcNow;
         profile.UpdatedAt = DateTime.UtcNow;
-        await _collection.InsertOneAsync(profile);
+        await _profiles.InsertOneAsync(profile, cancellationToken: ct);
         return profile;
     }
 
-    public async Task<StudentProfile?> GetByIdAsync(string id)
+    public async Task<StudentProfile?> GetByIdAsync(string id, CancellationToken ct = default)
     {
-        return await _collection.Find(p => p.Id == id).FirstOrDefaultAsync();
+        return await _profiles.Find(p => p.Id == id).FirstOrDefaultAsync(ct);
     }
 
-    public async Task<StudentProfile?> UpdateAsync(string id, StudentProfile updated)
+    public async Task<StudentProfile?> GetByEmailAsync(string email, CancellationToken ct = default)
     {
-        // Preserve CreatedAt from the existing document to avoid overwriting it
-        var existing = await _collection.Find(p => p.Id == id).FirstOrDefaultAsync();
-        if (existing is null) return null;
+        return await _profiles.Find(p => p.Email == email).FirstOrDefaultAsync(ct);
+    }
 
-        updated.Id = id;
-        updated.CreatedAt = existing.CreatedAt;
-        updated.UpdatedAt = DateTime.UtcNow;
-        await _collection.ReplaceOneAsync(p => p.Id == id, updated);
-        return updated;
+    // TODO: Consider using $set for individual fields instead of ReplaceOneAsync
+    // to avoid overwriting concurrent updates from UpdateStreakAsync / UpsertConceptMasteriesAsync.
+    public async Task<StudentProfile> UpdateAsync(StudentProfile profile, CancellationToken ct = default)
+    {
+        profile.UpdatedAt = DateTime.UtcNow;
+        await _profiles.ReplaceOneAsync(p => p.Id == profile.Id, profile, cancellationToken: ct);
+        return profile;
     }
 
     public async Task UpdateStreakAsync(string profileId, int newStreakDays, bool updateStreak, DateTime lastActiveDate, CancellationToken ct)
@@ -49,14 +62,12 @@ public class ProfileRepository : IProfileRepository
         if (updateStreak)
             update = update.Set(p => p.StreakDays, newStreakDays);
 
-        await _collection.UpdateOneAsync(p => p.Id == profileId, update, cancellationToken: ct);
+        await _profiles.UpdateOneAsync(p => p.Id == profileId, update, cancellationToken: ct);
     }
 
     public async Task UpsertConceptMasteriesAsync(string profileId, IEnumerable<string> concepts, CancellationToken ct)
     {
-        // TODO: This is a read-modify-write and not fully atomic. Concurrent calls for the same
-        // profile can lose updates. Consider MongoDB arrayFilters or a per-profile lock for full atomicity.
-        var profile = await _collection.Find(p => p.Id == profileId).FirstOrDefaultAsync(ct);
+        var profile = await _profiles.Find(p => p.Id == profileId).FirstOrDefaultAsync(ct);
         if (profile is null) return;
 
         var now = DateTime.UtcNow;
@@ -86,10 +97,9 @@ public class ProfileRepository : IProfileRepository
             }
         }
 
-        // Use $set on the specific fields instead of replacing the entire document
         var update = Builders<StudentProfile>.Update
             .Set(p => p.ConceptMasteries, masteries)
             .Set(p => p.UpdatedAt, now);
-        await _collection.UpdateOneAsync(p => p.Id == profileId, update, cancellationToken: ct);
+        await _profiles.UpdateOneAsync(p => p.Id == profileId, update, cancellationToken: ct);
     }
 }

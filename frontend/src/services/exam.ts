@@ -1,6 +1,14 @@
+import { useAuthStore } from "../stores/auth";
 import type { Exam, ExamResult } from "../types";
 
 const BASE_URL = import.meta.env.VITE_API_URL ?? "http://localhost:5000";
+
+function getAuthHeaders(): Record<string, string> {
+  const token = useAuthStore.getState().token;
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+  return headers;
+}
 
 export async function generateExam(
   profileId: string,
@@ -9,7 +17,7 @@ export async function generateExam(
 ): Promise<Exam> {
   const res = await fetch(`${BASE_URL}/api/exams/generate`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: getAuthHeaders(),
     body: JSON.stringify({ profileId, topic, questionCount }),
   });
   if (!res.ok) throw new Error("Failed to generate exam");
@@ -23,7 +31,7 @@ export async function submitExam(
 ): Promise<ExamResult & { exam: Exam }> {
   const res = await fetch(`${BASE_URL}/api/exams/${examId}/submit`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: getAuthHeaders(),
     body: JSON.stringify({ profileId, answers }),
   });
   if (!res.ok) throw new Error("Failed to submit exam");
@@ -31,7 +39,9 @@ export async function submitExam(
 }
 
 export async function fetchExams(profileId: string): Promise<Exam[]> {
-  const res = await fetch(`${BASE_URL}/api/profiles/${profileId}/exams`);
+  const res = await fetch(`${BASE_URL}/api/profiles/${profileId}/exams`, {
+    headers: getAuthHeaders(),
+  });
   if (!res.ok) throw new Error("Failed to fetch exams");
   return res.json();
 }

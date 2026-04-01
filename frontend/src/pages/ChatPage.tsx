@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { OnboardingModal } from "../components/onboarding/OnboardingModal";
+import { AuthModal } from "../components/auth/AuthModal";
+import { ChatDrawer } from "../components/chat/ChatDrawer";
 import { MessageList } from "../components/chat/MessageList";
 import { ChatInput } from "../components/chat/ChatInput";
 import { CameraOverlay } from "../components/camera/CameraOverlay";
@@ -8,7 +9,7 @@ import { NotebookPage } from "../components/notebook/NotebookPage";
 import { ExamPage } from "../components/exam/ExamPage";
 import { StreakBadge } from "../components/profile/StreakBadge";
 import { ConceptMasteryPage } from "../components/profile/ConceptMasteryPage";
-import { useOnboarding } from "../hooks/useOnboarding";
+import { useAuth } from "../hooks/useAuth";
 import { useChat } from "../hooks/useChat";
 import { useSpeech } from "../hooks/useSpeech";
 import { useCamera } from "../hooks/useCamera";
@@ -18,8 +19,19 @@ import { fetchProfileStats } from "../services/notebook";
 import type { ChatMessage, ProfileStats } from "../types";
 
 export function ChatPage() {
-  const { profileId, isReady, showOnboarding, completeOnboarding } = useOnboarding();
-  const { messages, isLoading, sendMessage } = useChat(profileId ?? "");
+  const { isAuthenticated, profileId, logout } = useAuth();
+  const {
+    messages,
+    isLoading,
+    conversationId,
+    conversations,
+    sendMessage,
+    startNewChat,
+    loadConversation,
+    renameConversation,
+    deleteConversation,
+  } = useChat(profileId ?? "");
+
   const camera = useCamera();
   const { speak: speakNarration, stop: stopNarration } = useTts();
   const prevLoadingRef = useRef(isLoading);
@@ -28,6 +40,7 @@ export function ChatPage() {
   const [showExam, setShowExam] = useState(false);
   const [showConcepts, setShowConcepts] = useState(false);
   const [profileStats, setProfileStats] = useState<ProfileStats | null>(null);
+  const [drawerOpen, setDrawerOpen] = useState(false);
   const notebook = useNotebook(profileId ?? "");
 
   const { isListening, isSupported, startListening, stopListening, interimText } = useSpeech(
@@ -50,7 +63,6 @@ export function ChatPage() {
   useEffect(() => {
     if (!profileId) return;
     const wasLoading = prevLoadingRef.current;
-    // On mount (wasLoading undefined → false) or when loading transitions to done
     if (!isLoading && (wasLoading || profileStats === null)) {
       fetchProfileStats(profileId)
         .then(setProfileStats)
@@ -77,27 +89,35 @@ export function ChatPage() {
     }
   }, [camera, sendMessage]);
 
-  if (!isReady) {
-    return (
-      <div className="flex h-dvh items-center justify-center bg-white">
-        <div className="w-8 h-8 border-2 border-[#2B9DB0] border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
+  // Auth gate
+  if (!isAuthenticated) {
+    return <AuthModal />;
   }
 
   return (
     <div className="flex flex-col h-dvh bg-white">
       {/* Header */}
       <header className="flex items-center justify-between px-4 py-3 border-b border-gray-100 bg-white flex-shrink-0">
-        <button
-          onClick={() => { setAutoRead((v) => { if (v) stopNarration(); return !v; }); }}
-          className={`w-8 h-8 flex items-center justify-center rounded-lg transition-colors text-lg ${
-            autoRead ? "bg-[#2B9DB0]/10 text-[#2B9DB0]" : "text-gray-400 hover:bg-gray-100"
-          }`}
-          title={autoRead ? "Stäng av automatisk uppläsning" : "Slå på automatisk uppläsning"}
-        >
-          {autoRead ? "🔊" : "🔇"}
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setDrawerOpen(true)}
+            className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-500 transition-colors hover:bg-gray-100"
+            aria-label="Öppna chattar"
+          >
+            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+          </button>
+          <button
+            onClick={() => { setAutoRead((v) => { if (v) stopNarration(); return !v; }); }}
+            className={`w-8 h-8 flex items-center justify-center rounded-lg transition-colors text-lg ${
+              autoRead ? "bg-[#2B9DB0]/10 text-[#2B9DB0]" : "text-gray-400 hover:bg-gray-100"
+            }`}
+            title={autoRead ? "Stäng av automatisk uppläsning" : "Slå på automatisk uppläsning"}
+          >
+            {autoRead ? "🔊" : "🔇"}
+          </button>
+        </div>
 
         <span className="font-bold text-lg text-[#2B9DB0]">Lektio</span>
 
@@ -135,7 +155,7 @@ export function ChatPage() {
         onPrompt={sendMessage}
       />
 
-      {/* Input – only shown when profile is loaded */}
+      {/* Input -- only shown when profile is loaded */}
       {profileId && (
         <ChatInput
           onSend={sendMessage}
@@ -193,8 +213,18 @@ export function ChatPage() {
         />
       )}
 
-      {/* Onboarding overlay */}
-      {showOnboarding && <OnboardingModal onComplete={completeOnboarding} />}
+      {/* Chat drawer */}
+      <ChatDrawer
+        open={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        conversations={conversations}
+        activeConversationId={conversationId}
+        onNewChat={startNewChat}
+        onSelectConversation={loadConversation}
+        onRenameConversation={renameConversation}
+        onDeleteConversation={deleteConversation}
+        onLogout={logout}
+      />
     </div>
   );
 }

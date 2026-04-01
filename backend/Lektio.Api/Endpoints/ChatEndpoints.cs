@@ -1,5 +1,6 @@
 using System.Text;
 using System.Text.Json;
+using Lektio.Api.Extensions;
 using Lektio.Api.Models;
 using Lektio.Api.Services;
 
@@ -18,7 +19,7 @@ public static class ChatEndpoints
 
     public static void MapChatEndpoints(this WebApplication app)
     {
-        app.MapPost("/api/chat", HandleChatAsync);
+        app.MapPost("/api/chat", HandleChatAsync).RequireAuthorization();
     }
 
     private static async Task HandleChatAsync(
@@ -32,7 +33,18 @@ public static class ChatEndpoints
         ILogger<ChatHandler> logger,
         CancellationToken ct)
     {
-        var profile = await profiles.GetByIdAsync(req.ProfileId);
+        // Validate message is not empty (Gemini requires non-empty content)
+        if (string.IsNullOrWhiteSpace(req.Message) && string.IsNullOrWhiteSpace(req.ImageContext))
+        {
+            ctx.Response.StatusCode = 400;
+            await ctx.Response.WriteAsync("Message cannot be empty", ct);
+            return;
+        }
+
+        // Extract profileId from JWT instead of request body
+        var profileId = ctx.User.GetProfileId();
+
+        var profile = await profiles.GetByIdAsync(profileId, ct);
         if (profile is null)
         {
             ctx.Response.StatusCode = 404;
@@ -48,18 +60,22 @@ public static class ChatEndpoints
 
         await ctx.Response.StartAsync(ct);
 
-        // Load or create conversation – verify ownership to prevent cross-user injection
+        // Load or create conversation -- verify ownership to prevent cross-user injection
         Conversation conversation;
         if (!string.IsNullOrEmpty(req.ConversationId))
         {
-            var requested = await conversations.GetByIdAsync(req.ConversationId);
-            conversation = (requested is not null && requested.ProfileId == req.ProfileId)
+            var requested = await conversations.GetByIdAsync(req.ConversationId, ct);
+            conversation = (requested is not null && requested.ProfileId == profileId)
                 ? requested
-                : await conversations.GetOrCreateForProfileAsync(req.ProfileId);
+                : await conversations.GetOrCreateForProfileAsync(profileId);
         }
         else
         {
-            conversation = await conversations.GetOrCreateForProfileAsync(req.ProfileId);
+            // Create new conversation with title from first user message
+            var title = (req.Message?.Length ?? 0) > 50
+                ? req.Message![..50] + "..."
+                : req.Message ?? "Ny chatt";
+            conversation = await conversations.CreateAsync(profileId, title, ct);
         }
 
         // Build history for Claude (last 20 messages)
@@ -73,7 +89,7 @@ public static class ChatEndpoints
             await ai.StreamChatAsync(
                 profile,
                 history,
-                req.Message,
+                req.Message ?? "",
                 req.ImageContext,
                 async token =>
                 {
@@ -83,7 +99,7 @@ public static class ChatEndpoints
                 },
                 ct);
 
-            // Parse structured response — handle JSON, markdown-fenced JSON, or plain text
+            // Parse structured response -- handle JSON, markdown-fenced JSON, or plain text
             var rawText = fullText.ToString().Trim();
             var chatResponse = ParseChatResponse(rawText, conversation.Id, logger);
 
@@ -92,11 +108,11 @@ public static class ChatEndpoints
             // Persist messages to conversation
             await conversations.AppendMessagesAsync(
                 conversation.Id,
-                new ConversationMessage { Role = "user", Content = req.Message },
+                new ConversationMessage { Role = "user", Content = req.Message ?? "" },
                 new ConversationMessage { Role = "assistant", Content = chatResponse.Text });
 
             // Update streak
-            await streakService.UpdateStreakAsync(req.ProfileId, ct);
+            await streakService.UpdateStreakAsync(profileId, ct);
 
             // Fire-and-forget concept extraction in a new DI scope (non-blocking)
             _ = Task.Run(async () =>
@@ -105,11 +121,11 @@ public static class ChatEndpoints
                 {
                     using var scope = scopeFactory.CreateScope();
                     var conceptService = scope.ServiceProvider.GetRequiredService<IConceptService>();
-                    await conceptService.ExtractAndUpdateAsync(req.ProfileId, chatResponse.Text, CancellationToken.None);
+                    await conceptService.ExtractAndUpdateAsync(profileId, chatResponse.Text, CancellationToken.None);
                 }
                 catch (Exception ex)
                 {
-                    logger.LogWarning(ex, "Background concept extraction failed for profile {ProfileId}", req.ProfileId);
+                    logger.LogWarning(ex, "Background concept extraction failed for profile {ProfileId}", profileId);
                 }
             }, CancellationToken.None);
 
@@ -119,7 +135,7 @@ public static class ChatEndpoints
         }
         catch (OperationCanceledException)
         {
-            // Client disconnected – that's fine
+            // Client disconnected -- that's fine
         }
         catch (Exception ex)
         {
@@ -176,7 +192,7 @@ public static class ChatEndpoints
             catch (JsonException) { /* continue to fallback */ }
         }
 
-        // Strategy 3: Fallback — treat entire response as plain markdown text
+        // Strategy 3: Fallback -- treat entire response as plain markdown text
         logger.LogWarning("AI returned non-JSON response, wrapping as plain text.");
         return new ChatResponse
         {
