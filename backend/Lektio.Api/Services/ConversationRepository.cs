@@ -34,6 +34,28 @@ public class ConversationRepository : IConversationRepository
         return conversation;
     }
 
+    public async Task<Conversation> GetOrCreateForProfileAsync(string profileId)
+    {
+        // Atomic upsert -- avoids TOCTOU race between Find and Insert
+        var now = DateTime.UtcNow;
+        var filter = Builders<Conversation>.Filter.Eq(c => c.ProfileId, profileId);
+        var update = Builders<Conversation>.Update
+            .SetOnInsert(c => c.ProfileId, profileId)
+            .SetOnInsert(c => c.Title, "Ny chatt")
+            .SetOnInsert(c => c.Messages, new List<ConversationMessage>())
+            .SetOnInsert(c => c.MessageCount, 0)
+            .SetOnInsert(c => c.CreatedAt, now)
+            .Set(c => c.UpdatedAt, now);
+        var options = new FindOneAndUpdateOptions<Conversation>
+        {
+            IsUpsert = true,
+            ReturnDocument = ReturnDocument.After,
+            Sort = Builders<Conversation>.Sort.Descending(c => c.UpdatedAt)
+        };
+
+        return await _conversations.FindOneAndUpdateAsync(filter, update, options);
+    }
+
     public async Task<Conversation?> GetByIdAsync(string id, CancellationToken ct)
     {
         return await _conversations.Find(c => c.Id == id).FirstOrDefaultAsync(ct);
@@ -64,6 +86,16 @@ public class ConversationRepository : IConversationRepository
             .Set(c => c.UpdatedAt, DateTime.UtcNow);
 
         await _conversations.UpdateOneAsync(c => c.Id == id, update, cancellationToken: ct);
+    }
+
+    public async Task AppendMessagesAsync(string conversationId, ConversationMessage user, ConversationMessage assistant)
+    {
+        var update = Builders<Conversation>.Update
+            .PushEach(c => c.Messages, new[] { user, assistant })
+            .Inc(c => c.MessageCount, 2)
+            .Set(c => c.UpdatedAt, DateTime.UtcNow);
+
+        await _conversations.UpdateOneAsync(c => c.Id == conversationId, update);
     }
 
     public async Task RenameAsync(string id, string profileId, string title, CancellationToken ct)

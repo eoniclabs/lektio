@@ -20,6 +20,12 @@ public static class AuthEndpoints
             if (string.IsNullOrWhiteSpace(req.Password) || req.Password.Length < 6)
                 return Results.BadRequest(new { error = "Lösenord måste vara minst 6 tecken" });
 
+            if (string.IsNullOrWhiteSpace(req.Name))
+                return Results.BadRequest(new { error = "Namn krävs" });
+
+            if (string.IsNullOrWhiteSpace(req.SchoolLevel))
+                return Results.BadRequest(new { error = "Skolnivå krävs" });
+
             var existing = await profiles.GetByEmailAsync(req.Email.Trim().ToLowerInvariant());
             if (existing is not null)
                 return Results.Conflict(new { error = "E-postadressen används redan" });

@@ -10,11 +10,46 @@ var builder = WebApplication.CreateBuilder(args);
 // MongoDB
 builder.Services.AddSingleton<MongoDbContext>();
 
-// Repositories
+// Repositories (singleton -- stateless, hold collection references)
 builder.Services.AddSingleton<IProfileRepository, ProfileRepository>();
 builder.Services.AddSingleton<IConversationRepository, ConversationRepository>();
+builder.Services.AddSingleton<INotebookRepository, NotebookRepository>();
+builder.Services.AddSingleton<IStreakService, StreakService>();
+builder.Services.AddSingleton<IExamRepository, ExamRepository>();
+builder.Services.AddSingleton<IExamResultRepository, ExamResultRepository>();
 
-// JWT
+// AI provider HTTP clients
+builder.Services.AddHttpClient("claude", client =>
+{
+    client.BaseAddress = new Uri("https://api.anthropic.com");
+    client.Timeout = TimeSpan.FromSeconds(120);
+});
+builder.Services.AddHttpClient("openai", client =>
+{
+    client.BaseAddress = new Uri("https://api.openai.com");
+    client.Timeout = TimeSpan.FromSeconds(120);
+});
+
+// ElevenLabs HTTP client
+builder.Services.AddHttpClient("elevenlabs", client =>
+{
+    client.BaseAddress = new Uri("https://api.elevenlabs.io");
+    client.Timeout = TimeSpan.FromSeconds(30);
+});
+
+// AI service -- provider selected via Ai:Provider config ("Claude" or "OpenAI")
+var aiProvider = builder.Configuration["Ai:Provider"] ?? "Claude";
+if (aiProvider.Equals("OpenAI", StringComparison.OrdinalIgnoreCase))
+    builder.Services.AddScoped<IAiService, OpenAiService>();
+else
+    builder.Services.AddScoped<IAiService, ClaudeService>();
+
+builder.Services.AddScoped<IImageAnalysisService, ImageAnalysisService>();
+builder.Services.AddScoped<ITtsService, ElevenLabsTtsService>();
+builder.Services.AddScoped<IExamService, ExamService>();
+builder.Services.AddScoped<IConceptService, ConceptService>();
+
+// JWT authentication
 var jwtSecret = builder.Configuration["Jwt:Secret"]
     ?? throw new InvalidOperationException("Jwt:Secret not configured");
 
@@ -32,6 +67,12 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     });
 builder.Services.AddAuthorization();
 builder.Services.AddSingleton<JwtService>();
+
+// JSON options -- camelCase for frontend compatibility
+builder.Services.ConfigureHttpJsonOptions(options =>
+{
+    options.SerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
+});
 
 // CORS
 var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
@@ -58,6 +99,10 @@ app.MapHealthEndpoints();
 app.MapAuthEndpoints();
 app.MapProfileEndpoints();
 app.MapChatEndpoints();
+app.MapImageEndpoints();
+app.MapTtsEndpoints();
+app.MapNotebookEndpoints();
+app.MapExamEndpoints();
 app.MapConversationEndpoints();
 
 app.Run();

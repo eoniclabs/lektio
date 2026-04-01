@@ -24,7 +24,7 @@ public static class ProfileEndpoints
                 profile.Email,
                 profile.SchoolLevel,
                 profile.Preferences,
-                profile.ConceptMastery,
+                profile.ConceptMasteries,
                 profile.StreakDays,
                 profile.CreatedAt
             });

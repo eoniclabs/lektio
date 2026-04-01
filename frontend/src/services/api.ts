@@ -1,6 +1,6 @@
 import { useAuthStore } from "../stores/auth";
 
-const BASE_URL = "/api";
+const BASE_URL = import.meta.env.VITE_API_URL ?? "http://localhost:5000";
 
 export class ApiError extends Error {
   status: number;
@@ -28,7 +28,7 @@ async function request<T>(
   path: string,
   options?: RequestInit,
 ): Promise<T> {
-  const response = await fetch(`${BASE_URL}${path}`, {
+  const response = await fetch(`${BASE_URL}/api${path}`, {
     headers: {
       "Content-Type": "application/json",
       ...getAuthHeaders(),

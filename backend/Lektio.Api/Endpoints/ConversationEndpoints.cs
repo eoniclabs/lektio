@@ -29,6 +29,9 @@ public static class ConversationEndpoints
 
         group.MapPatch("/{id}/title", async (string id, RenameRequest req, HttpContext ctx, IConversationRepository conversations, CancellationToken ct) =>
         {
+            if (string.IsNullOrWhiteSpace(req.Title))
+                return Results.BadRequest(new { error = "Titel krävs" });
+
             var profileId = ctx.User.GetProfileId();
             await conversations.RenameAsync(id, profileId, req.Title, ct);
             return Results.Ok();

@@ -1,35 +1,105 @@
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useRef } from "react";
+import { v4 as uuidv4 } from "uuid";
 import { useChatStore } from "../stores/chat";
 import { useAuthStore } from "../stores/auth";
+import { sendChatMessage } from "../services/chatStream";
 import { conversationsApi } from "../services/conversations";
 import type { ChatMessage } from "../types";
 
-export function useChat() {
+export function useChat(profileId: string) {
   const {
     messages,
+    isLoading,
     conversationId,
     conversations,
-    isLoading,
     addMessage,
+    updateLastMessage,
+    finalizeLastMessage,
     setLoading,
-    clearMessages,
     setConversationId,
     setConversations,
-    addConversation,
     removeConversation,
     updateConversationTitle,
     setMessages,
+    clearMessages,
   } = useChatStore();
 
   const token = useAuthStore((s) => s.token);
+  const abortRef = useRef<AbortController | null>(null);
+
+  // Abort any in-flight stream when the component unmounts
+  useEffect(() => {
+    return () => abortRef.current?.abort();
+  }, []);
 
   // Fetch conversations on mount when authenticated
   useEffect(() => {
     if (!token) return;
     conversationsApi.fetchConversations().then(setConversations).catch(() => {
-      // Silently fail — user will see empty list
+      // Silently fail -- user will see empty list
     });
   }, [token, setConversations]);
+
+  const sendMessage = useCallback(
+    async (text: string, imageContext?: string, imageDataUrl?: string) => {
+      if (!text.trim() && !imageContext) return;
+      if (isLoading) return;
+
+      // Abort any previous request and create a fresh controller
+      abortRef.current?.abort();
+      abortRef.current = new AbortController();
+
+      // Add user message
+      addMessage({
+        id: uuidv4(),
+        role: "user",
+        content: text.trim() || (imageDataUrl ? "[Foto av boksida]" : ""),
+        imageUrl: imageDataUrl,
+        timestamp: new Date().toISOString(),
+      });
+
+      // Add empty assistant placeholder
+      addMessage({
+        id: uuidv4(),
+        role: "assistant",
+        content: "",
+        timestamp: new Date().toISOString(),
+      });
+
+      setLoading(true);
+
+      try {
+        await sendChatMessage(
+          { message: text.trim(), conversationId, profileId, imageContext },
+          {
+            onDelta: (tkn) => updateLastMessage(tkn),
+            onDone: (response) => {
+              finalizeLastMessage(response.text, response.narration ?? undefined);
+              setConversationId(response.conversationId);
+            },
+            onError: (error) => {
+              finalizeLastMessage(
+                `*Något gick fel: ${error}*`,
+              );
+            },
+          },
+          abortRef.current.signal,
+        );
+      } finally {
+        setLoading(false);
+      }
+    },
+    [
+      isLoading,
+      conversationId,
+      profileId,
+      addMessage,
+      updateLastMessage,
+      finalizeLastMessage,
+      setLoading,
+      setConversationId,
+    ],
+  );
 
   const startNewChat = useCallback(() => {
     clearMessages();
@@ -75,7 +145,6 @@ export function useChat() {
       try {
         await conversationsApi.deleteConversation(id);
         removeConversation(id);
-        // If we deleted the active conversation, clear messages
         if (useChatStore.getState().conversationId === id) {
           clearMessages();
         }
@@ -88,13 +157,10 @@ export function useChat() {
 
   return {
     messages,
+    isLoading,
     conversationId,
     conversations,
-    isLoading,
-    addMessage,
-    setLoading,
-    setConversationId,
-    addConversation,
+    sendMessage,
     startNewChat,
     loadConversation,
     renameConversation,
