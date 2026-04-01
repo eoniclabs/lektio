@@ -41,3 +41,16 @@ export interface VisualStep {
   transition: "draw" | "fade" | "morph" | "slide";
   durationMs: number;
 }
+
+export interface ConversationSummary {
+  id: string;
+  title: string;
+  messageCount: number;
+  updatedAt: string;
+}
+
+export interface AuthResponse {
+  token: string;
+  profileId: string;
+  name: string;
+}

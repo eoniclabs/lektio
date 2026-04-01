@@ -1,3 +1,5 @@
+import { useAuthStore } from "../stores/auth";
+
 const BASE_URL = "/api";
 
 export class ApiError extends Error {
@@ -14,6 +16,14 @@ export class ApiError extends Error {
   }
 }
 
+function getAuthHeaders(): Record<string, string> {
+  const token = useAuthStore.getState().token;
+  if (token) {
+    return { Authorization: `Bearer ${token}` };
+  }
+  return {};
+}
+
 async function request<T>(
   path: string,
   options?: RequestInit,
@@ -21,10 +31,16 @@ async function request<T>(
   const response = await fetch(`${BASE_URL}${path}`, {
     headers: {
       "Content-Type": "application/json",
+      ...getAuthHeaders(),
       ...options?.headers,
     },
     ...options,
   });
+
+  if (response.status === 401) {
+    useAuthStore.getState().logout();
+    throw new ApiError(401, "Unauthorized");
+  }
 
   if (!response.ok) {
     const body = await response.text().catch(() => undefined);
@@ -41,5 +57,7 @@ export const api = {
     request<T>(path, { method: "POST", body: JSON.stringify(body) }),
   put: <T>(path: string, body: unknown) =>
     request<T>(path, { method: "PUT", body: JSON.stringify(body) }),
+  patch: <T>(path: string, body: unknown) =>
+    request<T>(path, { method: "PATCH", body: JSON.stringify(body) }),
   delete: <T>(path: string) => request<T>(path, { method: "DELETE" }),
 };
