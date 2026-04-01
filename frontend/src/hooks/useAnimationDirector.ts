@@ -39,37 +39,47 @@ export function useAnimationDirector(steps: VisualStep[]) {
     }
   };
 
-  // Auto-advance logic
+  const advanceToNext = () => {
+    setCurrentStep((s) => {
+      if (s >= totalSteps - 1) {
+        setPlaybackState("paused");
+        return s;
+      }
+      return s + 1;
+    });
+  };
+
+  // Auto-advance + TTS narration (coordinated)
   useEffect(() => {
     if (playbackState !== "playing") {
       clearTimer();
+      ttsRef.current.stop();
       return;
     }
 
     const stepDuration = (steps[currentStep]?.durationMs ?? 1000) / speed;
-    timerRef.current = setTimeout(() => {
-      setCurrentStep((s) => {
-        if (s >= totalSteps - 1) {
-          setPlaybackState("paused");
-          return s;
-        }
-        return s + 1;
-      });
-    }, stepDuration);
-
-    return clearTimer;
-  }, [playbackState, currentStep, speed, steps, totalSteps]);
-
-  // Speak narration when step becomes active
-  useEffect(() => {
-    if (!audioEnabled || playbackState !== "playing") {
-      ttsRef.current.stop();
-      return;
-    }
     const narration = steps[currentStep]?.narration;
-    if (narration) ttsRef.current.speak(narration, { rate: speed });
-    return () => ttsRef.current.stop();
-  }, [currentStep, audioEnabled, playbackState, speed, steps]);
+
+    if (audioEnabled && narration) {
+      // Speak narration, then wait stepDuration AFTER speech ends before advancing
+      ttsRef.current.speak(narration, {
+        rate: speed,
+        onEnd: () => {
+          // Brief pause after narration, then advance
+          timerRef.current = setTimeout(advanceToNext, Math.min(stepDuration, 800));
+        },
+      });
+    } else {
+      // No audio — advance on timer only
+      ttsRef.current.stop();
+      timerRef.current = setTimeout(advanceToNext, stepDuration);
+    }
+
+    return () => {
+      clearTimer();
+      ttsRef.current.stop();
+    };
+  }, [playbackState, currentStep, speed, steps, totalSteps, audioEnabled]);
 
   // Clean up on unmount
   useEffect(() => () => {
