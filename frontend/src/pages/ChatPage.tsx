@@ -21,8 +21,9 @@ export function ChatPage() {
   const { profileId, isReady, showOnboarding, completeOnboarding } = useOnboarding();
   const { messages, isLoading, sendMessage } = useChat(profileId ?? "");
   const camera = useCamera();
-  const { speak: speakNarration } = useTts();
+  const { speak: speakNarration, stop: stopNarration } = useTts();
   const prevLoadingRef = useRef(isLoading);
+  const [autoRead, setAutoRead] = useState(false);
   const [showNotebook, setShowNotebook] = useState(false);
   const [showExam, setShowExam] = useState(false);
   const [showConcepts, setShowConcepts] = useState(false);
@@ -33,17 +34,17 @@ export function ChatPage() {
     (text) => sendMessage(text),
   );
 
-  // Auto-play narration when a new assistant message arrives
+  // Auto-play narration when a new assistant message arrives (if enabled)
   useEffect(() => {
     const wasLoading = prevLoadingRef.current;
     prevLoadingRef.current = isLoading;
-    if (wasLoading && !isLoading) {
+    if (autoRead && wasLoading && !isLoading) {
       const last = messages[messages.length - 1];
       if (last?.role === "assistant" && last.narration) {
         speakNarration(last.narration);
       }
     }
-  }, [isLoading, messages, speakNarration]);
+  }, [isLoading, messages, speakNarration, autoRead]);
 
   // Fetch profile stats on mount and after each completed message
   useEffect(() => {
@@ -88,10 +89,14 @@ export function ChatPage() {
     <div className="flex flex-col h-dvh bg-white">
       {/* Header */}
       <header className="flex items-center justify-between px-4 py-3 border-b border-gray-100 bg-white flex-shrink-0">
-        <button className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 transition-colors">
-          <svg className="w-5 h-5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-          </svg>
+        <button
+          onClick={() => { setAutoRead((v) => { if (v) stopNarration(); return !v; }); }}
+          className={`w-8 h-8 flex items-center justify-center rounded-lg transition-colors text-lg ${
+            autoRead ? "bg-[#2B9DB0]/10 text-[#2B9DB0]" : "text-gray-400 hover:bg-gray-100"
+          }`}
+          title={autoRead ? "Stäng av automatisk uppläsning" : "Slå på automatisk uppläsning"}
+        >
+          {autoRead ? "🔊" : "🔇"}
         </button>
 
         <span className="font-bold text-lg text-[#2B9DB0]">Lektio</span>
