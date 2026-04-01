@@ -21,11 +21,11 @@ public class StudentProfile
 
     public List<ConceptMastery> ConceptMasteries { get; set; } = new();
 
-    public int StreakDays { get; set; }
+    public int StreakDays { get; set; } = 0;
 
-    public DateTime? LastActiveDate { get; set; }
+    public DateTime? LastActiveDate { get; set; } = null;
 
-    public int TotalMessages { get; set; }
+    public int TotalMessages { get; set; } = 0;
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
