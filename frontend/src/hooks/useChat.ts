@@ -6,6 +6,50 @@ import { sendChatMessage } from "../services/chatStream";
 import { conversationsApi } from "../services/conversations";
 import type { ChatMessage } from "../types";
 
+/**
+ * Extract the "text" field content from a partial JSON stream.
+ * The AI returns: {"text":"...actual content...","narration":"..."}
+ * During streaming we want to show only the text content, not raw JSON.
+ */
+function extractStreamingText(raw: string): string {
+  // Find the start of the "text" field value
+  const marker = '"text"';
+  const idx = raw.indexOf(marker);
+  if (idx === -1) return "";
+
+  // Find the opening quote of the value
+  const colonIdx = raw.indexOf(":", idx + marker.length);
+  if (colonIdx === -1) return "";
+
+  const openQuote = raw.indexOf('"', colonIdx + 1);
+  if (openQuote === -1) return "";
+
+  // Extract content after the opening quote
+  // Find the closing quote (handle escaped quotes)
+  let content = "";
+  let i = openQuote + 1;
+  while (i < raw.length) {
+    if (raw[i] === "\\" && i + 1 < raw.length) {
+      // Handle escape sequences
+      const next = raw[i + 1];
+      if (next === "n") content += "\n";
+      else if (next === '"') content += '"';
+      else if (next === "\\") content += "\\";
+      else if (next === "t") content += "\t";
+      else content += next;
+      i += 2;
+    } else if (raw[i] === '"') {
+      // End of text field
+      break;
+    } else {
+      content += raw[i];
+      i++;
+    }
+  }
+
+  return content;
+}
+
 export function useChat(profileId: string) {
   const {
     messages,
@@ -26,6 +70,7 @@ export function useChat(profileId: string) {
 
   const token = useAuthStore((s) => s.token);
   const abortRef = useRef<AbortController | null>(null);
+  const rawStreamRef = useRef("");
 
   // Abort any in-flight stream when the component unmounts
   useEffect(() => {
@@ -67,12 +112,24 @@ export function useChat(profileId: string) {
       });
 
       setLoading(true);
+      rawStreamRef.current = "";
 
       try {
         await sendChatMessage(
           { message: text.trim(), conversationId, profileId, imageContext },
           {
-            onDelta: (tkn) => updateLastMessage(tkn),
+            onDelta: (tkn) => {
+              rawStreamRef.current += tkn;
+              const extracted = extractStreamingText(rawStreamRef.current);
+              // Replace the entire assistant message content with the extracted text
+              const store = useChatStore.getState();
+              const msgs = [...store.messages];
+              const last = msgs[msgs.length - 1];
+              if (last?.role === "assistant") {
+                msgs[msgs.length - 1] = { ...last, content: extracted };
+                useChatStore.setState({ messages: msgs });
+              }
+            },
             onDone: (response) => {
               finalizeLastMessage(response.text, response.narration ?? undefined, response.visualPrimitives ?? undefined);
               setConversationId(response.conversationId);
