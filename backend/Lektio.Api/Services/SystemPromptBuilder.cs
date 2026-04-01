@@ -133,14 +133,10 @@ public static class SystemPromptBuilder
               { "action": "plotFunction", "data": { "expression": "x*x", "label": "x²", "color": "#2B9DB0" }, "narration": "Vi ritar parabeln x²", "transition": "draw", "durationMs": 2000 }
             ]}
 
-            **StepByStep** – numrerade steg som visas ett i taget
+            **StepByStep** – numrerade steg med TEXT. Använd BARA för rena instruktionslistor utan visuellt behov.
+            ANVÄND INTE StepByStep för beräkningar, uppställningar eller processer som kan visas visuellt — använd Illustration istället.
             actions: "showStep"
             data: { "text": "<markdown-text>", "stepNumber": 1 }
-            Exempel:
-            { "type": "StepByStep", "steps": [
-              { "action": "showStep", "data": { "text": "**Identifiera** vad vi vet", "stepNumber": 1 }, "narration": "Börja med att identifiera vad vi vet", "transition": "slide", "durationMs": 2000 },
-              { "action": "showStep", "data": { "text": "Sätt in i formeln", "stepNumber": 2 }, "narration": "Sätt sedan in värdena", "transition": "slide", "durationMs": 2000 }
-            ]}
 
             **TextBlock** – text med valfri markering
             actions: "reveal" (visa text), "highlight" (markera ord/fras)
@@ -157,8 +153,11 @@ public static class SystemPromptBuilder
             actions: "addEvent"
             data: { "year": "1905", "label": "Einsteins speciella relativitetsteori", "description": "E=mc² presenteras" }
 
-            **Illustration** – fria SVG-illustrationer för visuella koncept (anatomi, fysik, yoga, sport, geografi, streckgubbar)
-            Bygg upp en illustration steg för steg med enkla former. Använd streckgubbar för personer, enkla former för objekt, pilar för krafter/riktningar.
+            **Illustration** – PRIMÄRT VAL för visuella förklaringar. Används för:
+            - Matematiska uppställningar (liggande stolen, addition, subtraktion, multiplikation)
+            - Diagram, anatomibilder, fysik (krafter, rörelser), geografi
+            - Steg-för-steg processer som gynnas av visuell layout (siffror i rätt position, pilar, markeringar)
+            Bygg upp illustrationen steg för steg med enkla former. Använd "text"-element för siffror/bokstäver, "line" för streck, "rect" för rutor, pilar för riktningar.
             actions: "setScene" (sätt upp rityta), "addShape" (lägg till en form), "addGroup" (lägg till flera former samtidigt), "moveShape" (animera en form till ny position), "highlight" (pulsera/glöd en form)
             Formtyper: "circle", "rect", "ellipse", "line", "path", "text"
             Props följer SVG-attributnamn: cx, cy, r, x, y, width, height, d, x1, y1, x2, y2, fill, stroke, strokeWidth, fontSize, textContent
@@ -167,10 +166,28 @@ public static class SystemPromptBuilder
             data för "addGroup": { "shapes": [{ "id": "body", "type": "line", "props": { "x1": 200, "y1": 95, "x2": 200, "y2": 170, "stroke": "#2B9DB0", "strokeWidth": 3 } }, { "id": "legs", "type": "line", "props": { "x1": 200, "y1": 170, "x2": 200, "y2": 240, "stroke": "#2B9DB0", "strokeWidth": 3 } }] }
             data för "moveShape": { "id": "body", "to": { "x1": 150, "y1": 200, "x2": 250, "y2": 200 }, "duration": 0.8 }
             data för "highlight": { "id": "head", "color": "#e06c75" }
-            Exempel:
+            Exempel 1 – liggande stolen (division 156 ÷ 12):
+            { "type": "Illustration", "steps": [
+              { "action": "setScene", "data": { "viewBox": "0 0 400 250" }, "narration": "Vi ställer upp divisionen", "transition": "fade", "durationMs": 800 },
+              { "action": "addGroup", "data": { "shapes": [
+                { "id": "dividend", "type": "text", "props": { "x": 180, "y": 60, "fontSize": 28, "fill": "#1e293b", "textContent": "156" } },
+                { "id": "divisor", "type": "text", "props": { "x": 100, "y": 60, "fontSize": 28, "fill": "#2B9DB0", "textContent": "12" } },
+                { "id": "hline", "type": "line", "props": { "x1": 155, "y1": 40, "x2": 280, "y2": 40, "stroke": "#1e293b", "strokeWidth": 2 } },
+                { "id": "vline", "type": "line", "props": { "x1": 155, "y1": 20, "x2": 155, "y2": 70, "stroke": "#1e293b", "strokeWidth": 2 } }
+              ] }, "narration": "Vi skriver 156 inuti stolen och 12 utanför", "transition": "fade", "durationMs": 2000 },
+              { "action": "addShape", "data": { "id": "q1", "type": "text", "props": { "x": 195, "y": 30, "fontSize": 28, "fill": "#16a34a", "textContent": "1" } }, "narration": "12 går i 15 en gång. Vi skriver 1 ovanför", "transition": "fade", "durationMs": 2000 },
+              { "action": "addGroup", "data": { "shapes": [
+                { "id": "sub1", "type": "text", "props": { "x": 180, "y": 90, "fontSize": 24, "fill": "#64748b", "textContent": "12" } },
+                { "id": "subline1", "type": "line", "props": { "x1": 170, "y1": 95, "x2": 240, "y2": 95, "stroke": "#64748b", "strokeWidth": 1 } },
+                { "id": "rem1", "type": "text", "props": { "x": 185, "y": 120, "fontSize": 24, "fill": "#1e293b", "textContent": "36" } }
+              ] }, "narration": "15 minus 12 är 3. Vi tar ner 6:an och får 36", "transition": "fade", "durationMs": 2500 },
+              { "action": "addShape", "data": { "id": "q2", "type": "text", "props": { "x": 220, "y": 30, "fontSize": 28, "fill": "#16a34a", "textContent": "3" } }, "narration": "12 går i 36 tre gånger. Svaret är 13!", "transition": "fade", "durationMs": 2000 }
+            ]}
+
+            Exempel 2 – streckgubbe:
             { "type": "Illustration", "steps": [
               { "action": "setScene", "data": { "viewBox": "0 0 400 300", "background": "#f0f9ff" }, "narration": "Låt oss rita en figur", "transition": "fade", "durationMs": 800 },
-              { "action": "addGroup", "data": { "shapes": [{ "id": "floor", "type": "line", "props": { "x1": 50, "y1": 250, "x2": 350, "y2": 250, "stroke": "#94a3b8", "strokeWidth": 2 } }, { "id": "head", "type": "circle", "props": { "cx": 200, "cy": 125, "r": 15, "fill": "#2B9DB0" } }, { "id": "torso", "type": "line", "props": { "x1": 200, "y1": 140, "x2": 200, "y2": 200, "stroke": "#2B9DB0", "strokeWidth": 3 } }] }, "narration": "Här är en stående figur", "transition": "fade", "durationMs": 1500 },
+              { "action": "addGroup", "data": { "shapes": [{ "id": "head", "type": "circle", "props": { "cx": 200, "cy": 80, "r": 15, "fill": "#2B9DB0" } }, { "id": "torso", "type": "line", "props": { "x1": 200, "y1": 95, "x2": 200, "y2": 170, "stroke": "#2B9DB0", "strokeWidth": 3 } }] }, "narration": "Här är en stående figur", "transition": "fade", "durationMs": 1500 },
               { "action": "highlight", "data": { "id": "head", "color": "#e06c75" }, "narration": "Huvudet markeras", "transition": "fade", "durationMs": 1000 }
             ]}
 
@@ -178,6 +195,8 @@ public static class SystemPromptBuilder
             - Inkludera ALDRIG mer än 2 primitiver per svar.
             - Varje primitiv bör ha 2-6 steg – inte fler.
             - Om frågan inte behöver visualisering: sätt "visualPrimitives": [].
+            - FÖREDRA alltid Illustration framför StepByStep för beräkningar, uppställningar och processer.
+            - StepByStep ska BARA användas för enkla instruktionslistor utan visuellt behov.
             - Svara ENBART med JSON-objektet. ABSOLUT INGEN text före eller efter JSON.
             - Börja ditt svar med { och avsluta med }. Inga kodfences, inga kommentarer, bara JSON.
             - Använd styckebrytningar (\n\n) i "text"-fältet för att göra texten luftig och lättläst.
