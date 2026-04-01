@@ -74,7 +74,7 @@ export function useChat(profileId: string) {
           {
             onDelta: (tkn) => updateLastMessage(tkn),
             onDone: (response) => {
-              finalizeLastMessage(response.text, response.narration ?? undefined);
+              finalizeLastMessage(response.text, response.narration ?? undefined, response.visualPrimitives ?? undefined);
               setConversationId(response.conversationId);
             },
             onError: (error) => {

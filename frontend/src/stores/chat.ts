@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import type { ChatMessage, ConversationSummary } from "../types";
+import type { ChatMessage, ConversationSummary, VisualPrimitive } from "../types";
 
 interface ChatState {
   messages: ChatMessage[];
@@ -9,7 +9,7 @@ interface ChatState {
   isLoading: boolean;
   addMessage: (message: ChatMessage) => void;
   updateLastMessage: (delta: string) => void;
-  finalizeLastMessage: (content: string, narration?: string) => void;
+  finalizeLastMessage: (content: string, narration?: string, visualPrimitives?: VisualPrimitive[]) => void;
   setLoading: (loading: boolean) => void;
   clearMessages: () => void;
   setConversationId: (id: string | null) => void;
@@ -43,12 +43,12 @@ export const useChatStore = create<ChatState>()(
           return { messages };
         }),
 
-      finalizeLastMessage: (content, narration) =>
+      finalizeLastMessage: (content, narration, visualPrimitives) =>
         set((state) => {
           const messages = [...state.messages];
           const last = messages[messages.length - 1];
           if (!last || last.role !== "assistant") return state;
-          messages[messages.length - 1] = { ...last, content, narration };
+          messages[messages.length - 1] = { ...last, content, narration, visualPrimitives };
           return { messages };
         }),
 
