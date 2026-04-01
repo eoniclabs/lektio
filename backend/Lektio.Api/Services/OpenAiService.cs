@@ -213,7 +213,7 @@ public class OpenAiService : IAiService
     {
         var apiKey = _configuration["OpenAI:ApiKey"]
             ?? throw new InvalidOperationException("OpenAI:ApiKey is not configured.");
-        var model = _configuration["OpenAI:Model"] ?? "gpt-4o";
+        var model = _configuration["OpenAI:Model"] ?? "gpt-5.4";
         return (apiKey, model);
     }
 
