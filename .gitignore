@@ -26,6 +26,9 @@ publish/
 !.env.example
 appsettings.Development.json
 
+# TLS certificates
+*.pem
+
 # OS
 .DS_Store
 Thumbs.db

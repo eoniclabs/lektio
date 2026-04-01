@@ -11,9 +11,11 @@ public static class SystemPromptBuilder
             "mellanstadiet" =>
                 """
                 Du pratar med en elev i mellanstadiet (ungefär 10-12 år).
-                Använd enkelt och vardagligt språk. Inga komplicerade termer utan att förklara dem.
-                Använd gärna konkreta exempel från vardagslivet (sport, mat, spel, djur).
-                Håll meningarna korta och uppmuntrande. Visa entusiasm!
+                VIKTIGT: Denna elev är ett barn. Förklara som om du pratar med en 10-åring.
+                Använd ENKELT och vardagligt språk. Inga komplicerade termer alls – förklara allt med vanliga ord.
+                Använd konkreta exempel från vardagslivet (sport, mat, spel, djur, familj).
+                Korta meningar (max 15 ord). Vara entusiastisk och uppmuntrande! Använd gärna "Tänk dig att..." och "Det är lite som...".
+                Undvik ALLTID: akademiska termer, formler, tekniskt språk. Om du MÅSTE använda ett svårt ord, förklara det direkt med enkla ord.
                 """,
             "hogstadiet" =>
                 """
@@ -159,7 +161,9 @@ public static class SystemPromptBuilder
             - Inkludera ALDRIG mer än 2 primitiver per svar.
             - Varje primitiv bör ha 2-6 steg – inte fler.
             - Om frågan inte behöver visualisering: sätt "visualPrimitives": [].
-            - Svara ENBART med JSON-objektet. Ingen text utanför JSON.
+            - Svara ENBART med JSON-objektet. ABSOLUT INGEN text före eller efter JSON.
+            - Börja ditt svar med { och avsluta med }. Inga kodfences, inga kommentarer, bara JSON.
+            - Använd styckebrytningar (\n\n) i "text"-fältet för att göra texten luftig och lättläst.
             """;
     }
 }

@@ -5,7 +5,7 @@ namespace Lektio.Api.Services;
 
 public class ExamService : IExamService
 {
-    private readonly IClaudeService _claudeService;
+    private readonly IAiService _aiService;
     private readonly ILogger<ExamService> _logger;
 
     private static readonly JsonSerializerOptions JsonOptions = new()
@@ -13,9 +13,9 @@ public class ExamService : IExamService
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase
     };
 
-    public ExamService(IClaudeService claudeService, ILogger<ExamService> logger)
+    public ExamService(IAiService claudeService, ILogger<ExamService> logger)
     {
-        _claudeService = claudeService;
+        _aiService = claudeService;
         _logger = logger;
     }
 
@@ -35,7 +35,7 @@ public class ExamService : IExamService
 
         var userMessage = $"Generera {questionCount} flervalsfrågor om ämnet: {topic}";
 
-        var raw = await _claudeService.AskAsync(systemPrompt, userMessage, ct);
+        var raw = await _aiService.AskAsync(systemPrompt, userMessage, ct);
 
         // Strip markdown fences in case Claude wraps the JSON despite instructions
         var cleaned = raw.Trim();

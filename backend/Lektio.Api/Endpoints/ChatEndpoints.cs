@@ -23,7 +23,7 @@ public static class ChatEndpoints
 
     private static async Task HandleChatAsync(
         ChatRequest req,
-        IClaudeService claude,
+        IAiService ai,
         IConversationRepository conversations,
         IProfileRepository profiles,
         IStreakService streakService,
@@ -70,7 +70,7 @@ public static class ChatEndpoints
 
         try
         {
-            await claude.StreamChatAsync(
+            await ai.StreamChatAsync(
                 profile,
                 history,
                 req.Message,
@@ -83,39 +83,9 @@ public static class ChatEndpoints
                 },
                 ct);
 
-            // Parse structured response
+            // Parse structured response — handle JSON, markdown-fenced JSON, or plain text
             var rawText = fullText.ToString().Trim();
-            ChatResponse chatResponse;
-            try
-            {
-                // Strip markdown code fences if Claude wrapped the JSON
-                if (rawText.StartsWith("```"))
-                {
-                    var start = rawText.IndexOf('\n') + 1;
-                    var end = rawText.LastIndexOf("```");
-                    rawText = end > start ? rawText[start..end].Trim() : rawText;
-                }
-
-                var parsed = JsonSerializer.Deserialize<ChatResponse>(rawText, new JsonSerializerOptions
-                {
-                    PropertyNameCaseInsensitive = true
-                });
-
-                chatResponse = parsed ?? new ChatResponse
-                {
-                    Text = rawText,
-                    ConversationId = conversation.Id
-                };
-            }
-            catch (JsonException)
-            {
-                logger.LogWarning("Claude returned non-JSON, wrapping as plain text.");
-                chatResponse = new ChatResponse
-                {
-                    Text = rawText,
-                    ConversationId = conversation.Id
-                };
-            }
+            var chatResponse = ParseChatResponse(rawText, conversation.Id, logger);
 
             chatResponse.ConversationId = conversation.Id;
 
@@ -159,6 +129,62 @@ public static class ChatEndpoints
         }
 
         await ctx.Response.Body.FlushAsync(ct);
+    }
+
+    private static ChatResponse ParseChatResponse(string rawText, string conversationId, ILogger logger)
+    {
+        var jsonOptions = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+
+        // Strategy 1: Try parsing the whole response as JSON
+        var cleaned = rawText;
+
+        // Strip markdown code fences if present
+        if (cleaned.StartsWith("```"))
+        {
+            var start = cleaned.IndexOf('\n') + 1;
+            var end = cleaned.LastIndexOf("```");
+            if (end > start)
+                cleaned = cleaned[start..end].Trim();
+        }
+
+        try
+        {
+            var parsed = JsonSerializer.Deserialize<ChatResponse>(cleaned, jsonOptions);
+            if (parsed?.Text is not null)
+            {
+                parsed.ConversationId = conversationId;
+                return parsed;
+            }
+        }
+        catch (JsonException) { /* continue to next strategy */ }
+
+        // Strategy 2: Extract JSON object from mixed text (AI may prefix/suffix text around JSON)
+        var jsonStart = rawText.IndexOf('{');
+        var jsonEnd = rawText.LastIndexOf('}');
+        if (jsonStart >= 0 && jsonEnd > jsonStart)
+        {
+            var candidate = rawText[jsonStart..(jsonEnd + 1)];
+            try
+            {
+                var parsed = JsonSerializer.Deserialize<ChatResponse>(candidate, jsonOptions);
+                if (parsed?.Text is not null)
+                {
+                    parsed.ConversationId = conversationId;
+                    return parsed;
+                }
+            }
+            catch (JsonException) { /* continue to fallback */ }
+        }
+
+        // Strategy 3: Fallback — treat entire response as plain markdown text
+        logger.LogWarning("AI returned non-JSON response, wrapping as plain text.");
+        return new ChatResponse
+        {
+            Text = rawText,
+            Narration = null,
+            VisualPrimitives = [],
+            ConversationId = conversationId
+        };
     }
 
     private static async Task WriteSseAsync(HttpResponse response, SseEvent evt, CancellationToken ct)
