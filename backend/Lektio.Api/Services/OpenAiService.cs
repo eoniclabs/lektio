@@ -47,7 +47,7 @@ public class OpenAiService : IAiService
         var requestBody = new
         {
             model,
-            max_tokens = 2048,
+            max_completion_tokens = 2048,
             messages,
             stream = true
         };
@@ -119,7 +119,7 @@ public class OpenAiService : IAiService
         var requestBody = new
         {
             model,
-            max_tokens = 4096,
+            max_completion_tokens = 4096,
             messages = new object[]
             {
                 new { role = "system", content = systemPrompt },
@@ -163,7 +163,7 @@ public class OpenAiService : IAiService
         var requestBody = new
         {
             model,
-            max_tokens = 4096,
+            max_completion_tokens = 4096,
             messages = new object[]
             {
                 new { role = "system", content = systemPrompt },
