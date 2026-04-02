@@ -8,6 +8,7 @@ import { TextBlockPrimitive } from "./TextBlockPrimitive";
 import { FlowChartPrimitive } from "./FlowChartPrimitive";
 import { TimelinePrimitive } from "./TimelinePrimitive";
 import { IllustrationPrimitive } from "./IllustrationPrimitive";
+import { ExcalidrawPrimitive } from "./ExcalidrawPrimitive";
 import { PlaybackControls } from "./PlaybackControls";
 
 interface PrimitiveRendererProps {
@@ -32,6 +33,8 @@ function PrimitiveContent({ type }: { type: string }) {
       return <TimelinePrimitive />;
     case "Illustration":
       return <IllustrationPrimitive />;
+    case "Excalidraw":
+      return <ExcalidrawPrimitive />;
     default:
       return (
         <div className="py-4 text-sm text-gray-400 text-center italic">

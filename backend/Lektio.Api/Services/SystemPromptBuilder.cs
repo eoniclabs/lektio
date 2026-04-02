@@ -134,7 +134,7 @@ public static class SystemPromptBuilder
             ]}
 
             **StepByStep** – numrerade steg med TEXT. Använd BARA för rena instruktionslistor utan visuellt behov.
-            ANVÄND INTE StepByStep för beräkningar, uppställningar eller processer som kan visas visuellt — använd Illustration istället.
+            ANVÄND INTE StepByStep för beräkningar, uppställningar eller processer som kan visas visuellt — använd Excalidraw istället.
             actions: "showStep"
             data: { "text": "<markdown-text>", "stepNumber": 1 }
 
@@ -153,50 +153,77 @@ public static class SystemPromptBuilder
             actions: "addEvent"
             data: { "year": "1905", "label": "Einsteins speciella relativitetsteori", "description": "E=mc² presenteras" }
 
-            **Illustration** – PRIMÄRT VAL för visuella förklaringar. Används för:
-            - Matematiska uppställningar (liggande stolen, addition, subtraktion, multiplikation)
-            - Diagram, anatomibilder, fysik (krafter, rörelser), geografi
-            - Steg-för-steg processer som gynnas av visuell layout (siffror i rätt position, pilar, markeringar)
-            Bygg upp illustrationen steg för steg med enkla former. Använd "text"-element för siffror/bokstäver, "line" för streck, "rect" för rutor, pilar för riktningar.
+            **Excalidraw** – PRIMÄRT VAL för alla visuella förklaringar. Ger vackra handritade diagram.
+            Använd för: matematiska uppställningar, diagram, anatomibilder, fysik, processer, allt visuellt.
+
+            actions: "addElements" (lägg till element), "highlightElements" (markera element)
+
+            Element-typer och deras egenskaper:
+            - "rectangle": { type, x, y, width, height, backgroundColor?, strokeColor?, label?: { text } }
+            - "ellipse": { type, x, y, width?, height?, backgroundColor?, strokeColor? }
+            - "diamond": { type, x, y, width?, height?, backgroundColor?, label?: { text } }
+            - "text": { type, x, y, text, fontSize? }
+            - "line": { type, x, y, points?: [[dx1,dy1],[dx2,dy2]], strokeColor? }
+            - "arrow": { type, x, y, points?: [[dx1,dy1],[dx2,dy2]], label?: { text }, strokeColor? }
+
+            Alla element kan ha: id (string), strokeColor, backgroundColor, fillStyle ("solid"|"cross-hatch"|"hachure"), strokeWidth, strokeStyle ("solid"|"dotted"|"dashed"), opacity
+
+            Rektanglar/ellipser/diamanter med label.text får text inuti formen.
+
+            data för "addElements": { "elements": [<element-objekt>] }
+            data för "highlightElements": { "ids": ["elem-id"], "color": "#e06c75" }
+
+            Exempel – liggande stolen (156 ÷ 12):
+            { "type": "Excalidraw", "steps": [
+              { "action": "addElements", "data": { "elements": [
+                { "id": "divisor", "type": "text", "x": 50, "y": 50, "text": "12", "fontSize": 28 },
+                { "id": "bracket-v", "type": "line", "x": 100, "y": 20, "points": [[0,0],[0,60]] },
+                { "id": "bracket-h", "type": "line", "x": 100, "y": 20, "points": [[0,0],[120,0]] },
+                { "id": "dividend", "type": "text", "x": 110, "y": 30, "text": "156", "fontSize": 28 }
+              ] }, "narration": "Vi ställer upp 156 delat med 12 i liggande stolen", "transition": "fade", "durationMs": 2500 },
+              { "action": "addElements", "data": { "elements": [
+                { "id": "q1", "type": "text", "x": 115, "y": -5, "text": "1", "fontSize": 28 },
+                { "id": "sub1", "type": "text", "x": 110, "y": 85, "text": "12", "fontSize": 24 },
+                { "id": "line1", "type": "line", "x": 105, "y": 110, "points": [[0,0],[80,0]] },
+                { "id": "rem1", "type": "text", "x": 115, "y": 115, "text": "36", "fontSize": 24 }
+              ] }, "narration": "12 går i 15 en gång, 15 minus 12 är 3, ta ner 6:an", "transition": "fade", "durationMs": 3000 },
+              { "action": "addElements", "data": { "elements": [
+                { "id": "q2", "type": "text", "x": 145, "y": -5, "text": "3", "fontSize": 28 }
+              ] }, "narration": "12 går i 36 tre gånger. Svaret är 13!", "transition": "fade", "durationMs": 2000 },
+              { "action": "highlightElements", "data": { "ids": ["q1", "q2"], "color": "#16a34a" }, "narration": "Svaret tretton är markerat i grönt", "transition": "fade", "durationMs": 1500 }
+            ] }
+
+            Exempel – kraftdiagram:
+            { "type": "Excalidraw", "steps": [
+              { "action": "addElements", "data": { "elements": [
+                { "id": "box", "type": "rectangle", "x": 150, "y": 100, "width": 80, "height": 60, "backgroundColor": "#a5d8ff", "label": { "text": "Låda" } },
+                { "id": "ground", "type": "line", "x": 50, "y": 165, "points": [[0,0],[280,0]], "strokeStyle": "dotted" }
+              ] }, "narration": "Här har vi en låda på marken", "transition": "fade", "durationMs": 2000 },
+              { "action": "addElements", "data": { "elements": [
+                { "id": "gravity", "type": "arrow", "x": 190, "y": 160, "points": [[0,0],[0,60]], "strokeColor": "#e03131", "label": { "text": "Fg" } },
+                { "id": "normal", "type": "arrow", "x": 190, "y": 100, "points": [[0,0],[0,-60]], "strokeColor": "#2f9e44", "label": { "text": "Fn" } }
+              ] }, "narration": "Tyngdkraften drar nedåt, normalkraften trycker uppåt", "transition": "fade", "durationMs": 2500 }
+            ] }
+
+            **Illustration** – FALLBACK, föredra Excalidraw framför Illustration.
+            Används om Excalidraw inte kan uttrycka det du behöver.
+            Bygg upp illustrationen steg för steg med enkla former.
             actions: "setScene" (sätt upp rityta), "addShape" (lägg till en form), "addGroup" (lägg till flera former samtidigt), "moveShape" (animera en form till ny position), "highlight" (pulsera/glöd en form)
             Formtyper: "circle", "rect", "ellipse", "line", "path", "text"
             Props följer SVG-attributnamn: cx, cy, r, x, y, width, height, d, x1, y1, x2, y2, fill, stroke, strokeWidth, fontSize, textContent
             data för "setScene": { "viewBox": "0 0 400 300", "background": "#f0f9ff" }
             data för "addShape": { "id": "head", "type": "circle", "props": { "cx": 200, "cy": 80, "r": 15, "fill": "#2B9DB0" }, "label": "Huvud" }
-            data för "addGroup": { "shapes": [{ "id": "body", "type": "line", "props": { "x1": 200, "y1": 95, "x2": 200, "y2": 170, "stroke": "#2B9DB0", "strokeWidth": 3 } }, { "id": "legs", "type": "line", "props": { "x1": 200, "y1": 170, "x2": 200, "y2": 240, "stroke": "#2B9DB0", "strokeWidth": 3 } }] }
+            data för "addGroup": { "shapes": [{ "id": "body", "type": "line", "props": { "x1": 200, "y1": 95, "x2": 200, "y2": 170, "stroke": "#2B9DB0", "strokeWidth": 3 } }] }
             data för "moveShape": { "id": "body", "to": { "x1": 150, "y1": 200, "x2": 250, "y2": 200 }, "duration": 0.8 }
             data för "highlight": { "id": "head", "color": "#e06c75" }
-            Exempel 1 – liggande stolen (division 156 ÷ 12):
-            { "type": "Illustration", "steps": [
-              { "action": "setScene", "data": { "viewBox": "0 0 400 250" }, "narration": "Vi ställer upp divisionen", "transition": "fade", "durationMs": 800 },
-              { "action": "addGroup", "data": { "shapes": [
-                { "id": "dividend", "type": "text", "props": { "x": 180, "y": 60, "fontSize": 28, "fill": "#1e293b", "textContent": "156" } },
-                { "id": "divisor", "type": "text", "props": { "x": 100, "y": 60, "fontSize": 28, "fill": "#2B9DB0", "textContent": "12" } },
-                { "id": "hline", "type": "line", "props": { "x1": 155, "y1": 40, "x2": 280, "y2": 40, "stroke": "#1e293b", "strokeWidth": 2 } },
-                { "id": "vline", "type": "line", "props": { "x1": 155, "y1": 20, "x2": 155, "y2": 70, "stroke": "#1e293b", "strokeWidth": 2 } }
-              ] }, "narration": "Vi skriver 156 inuti stolen och 12 utanför", "transition": "fade", "durationMs": 2000 },
-              { "action": "addShape", "data": { "id": "q1", "type": "text", "props": { "x": 195, "y": 30, "fontSize": 28, "fill": "#16a34a", "textContent": "1" } }, "narration": "12 går i 15 en gång. Vi skriver 1 ovanför", "transition": "fade", "durationMs": 2000 },
-              { "action": "addGroup", "data": { "shapes": [
-                { "id": "sub1", "type": "text", "props": { "x": 180, "y": 90, "fontSize": 24, "fill": "#64748b", "textContent": "12" } },
-                { "id": "subline1", "type": "line", "props": { "x1": 170, "y1": 95, "x2": 240, "y2": 95, "stroke": "#64748b", "strokeWidth": 1 } },
-                { "id": "rem1", "type": "text", "props": { "x": 185, "y": 120, "fontSize": 24, "fill": "#1e293b", "textContent": "36" } }
-              ] }, "narration": "15 minus 12 är 3. Vi tar ner 6:an och får 36", "transition": "fade", "durationMs": 2500 },
-              { "action": "addShape", "data": { "id": "q2", "type": "text", "props": { "x": 220, "y": 30, "fontSize": 28, "fill": "#16a34a", "textContent": "3" } }, "narration": "12 går i 36 tre gånger. Svaret är 13!", "transition": "fade", "durationMs": 2000 }
-            ]}
-
-            Exempel 2 – streckgubbe:
-            { "type": "Illustration", "steps": [
-              { "action": "setScene", "data": { "viewBox": "0 0 400 300", "background": "#f0f9ff" }, "narration": "Låt oss rita en figur", "transition": "fade", "durationMs": 800 },
-              { "action": "addGroup", "data": { "shapes": [{ "id": "head", "type": "circle", "props": { "cx": 200, "cy": 80, "r": 15, "fill": "#2B9DB0" } }, { "id": "torso", "type": "line", "props": { "x1": 200, "y1": 95, "x2": 200, "y2": 170, "stroke": "#2B9DB0", "strokeWidth": 3 } }] }, "narration": "Här är en stående figur", "transition": "fade", "durationMs": 1500 },
-              { "action": "highlight", "data": { "id": "head", "color": "#e06c75" }, "narration": "Huvudet markeras", "transition": "fade", "durationMs": 1000 }
-            ]}
 
             ## Viktiga regler
             - Inkludera ALDRIG mer än 2 primitiver per svar.
             - Varje primitiv bör ha 2-6 steg – inte fler.
             - Om frågan inte behöver visualisering: sätt "visualPrimitives": [].
-            - FÖREDRA alltid Illustration framför StepByStep för beräkningar, uppställningar och processer.
-            - StepByStep ska BARA användas för enkla instruktionslistor utan visuellt behov.
+            - FÖREDRA Excalidraw framför alla andra primitiver för visuella förklaringar.
+            - Illustration och StepByStep ska bara användas som fallback.
+            - Excalidraw ger automatiskt handritad stil — inga extra stilsättningar behövs.
             - Svara ENBART med JSON-objektet. ABSOLUT INGEN text före eller efter JSON.
             - Börja ditt svar med { och avsluta med }. Inga kodfences, inga kommentarer, bara JSON.
             - Använd styckebrytningar (\n\n) i "text"-fältet för att göra texten luftig och lättläst.

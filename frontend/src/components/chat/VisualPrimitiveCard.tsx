@@ -20,6 +20,7 @@ const primitiveIcons: Record<string, string> = {
   ParticleSystem: "⚛",
   CodeBlock: "{ }",
   Illustration: "🎨",
+  Excalidraw: "✏️",
   TreeStructure: "🌳",
   ArrayVisualization: "[]",
   default: "✨",
@@ -33,6 +34,7 @@ const primitiveLabels: Record<string, string> = {
   Timeline: "Tidslinje",
   TextBlock: "Textblock",
   Illustration: "Illustration",
+  Excalidraw: "Diagram",
   default: "Visualisering",
 };
 
